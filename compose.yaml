@@ -31,6 +31,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Programador de tareas (sla:revisar cada 5 min, contratos:actualizar-estados diario)
+  scheduler:
+    image: servicecloudai-app:dev
+    volumes:
+      - .:/var/www/html
+      - vendor:/var/www/html/vendor
+    command: ["php", "/var/www/html/artisan", "schedule:work"]
+    stop_signal: SIGTERM
+    healthcheck:
+      test: ["CMD", "healthcheck-schedule"]
+      start_period: 10s
+    environment:
+      PHP_OPCACHE_ENABLE: "1"
+      PHP_OPCACHE_VALIDATE_TIMESTAMPS: "1"
+      PHP_OPCACHE_REVALIDATE_FREQ: "0"
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
   pgsql:
     image: postgres:17-alpine
     environment:

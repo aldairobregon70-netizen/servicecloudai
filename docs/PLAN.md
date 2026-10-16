@@ -8,7 +8,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - [x] **Fase 1 — Base de datos:** migración del esquema SQL, enums, scope multi-tenant, modelos, seeders demo.
 - [x] **Fase 2 — Base de la app:** CSS del mockup, layout, login, componentes Blade, menú por roles, JS base.
 - [x] **Fase 3 — Maestros:** Organizaciones, Usuarios, Activos, Servicios, Contratos (CRUD completo).
-- [ ] **Fase 4 — Operación:** Tickets + SLA, Asignaciones (kanban), Incidencias, Problemas, Solicitudes, SLA, notificaciones, scheduler.
+- [x] **Fase 4 — Operación:** Tickets + SLA, Asignaciones (kanban), Incidencias, Problemas, Solicitudes, SLA, notificaciones, scheduler.
 - [ ] **Fase 5 — IA:** drivers simulado/Gemini, base de conocimiento + RAG, clasificación, asistente, análisis de logs.
 - [ ] **Fase 6 — Dashboard y reportes:** KPIs y gráficos reales, notificaciones, reportes CSV, configuración, búsqueda global, auditoría.
 - [ ] **Fase 7 — Cierre y nube:** QA, rendimiento, imagen de producción, API, k6, documentación de despliegue.
@@ -59,6 +59,18 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - Tests: `OrganizacionesTest`, `UsuariosTest`, `ActivosServiciosContratosTest` (listar, crear, validar, editar, eliminar/desactivar, otro tenant 404, rol 403, CSV). 60 tests en verde. Flujo del modal probado en Chrome headless (errores por campo, guardado, toast, confirmación de eliminación).
 - **Rendimiento del entorno**: `vendor/` en volumen Docker + OPcache en desarrollo → de 2-5 s a 0,1-0,4 s por página.
 
+### Fase 4 (16/10/2026)
+
+- `SlaService` completo: política (servicio → contrato → defecto de la organización → primera activa), vencimientos 24x7/laboral, pausa en "En espera" (minutos pausados se suman al vencimiento), cumplimiento de respuesta/resolución en `tickets_sla`, texto de "SLA restante".
+- `TicketService`: crear (código `TKT-AAAA-00001` correlativo por año, prioridad por matriz, SLA, historial, asignación), actualizar (historial con nombres legibles), cambiar prioridad (recalcula SLA), asignar/reasignar, cambiar estado con transiciones válidas (`EstadoTicket::transiciones()`), resolución con solución obligatoria, comentarios (primera respuesta), adjuntos privados en `storage/app/private/tickets/{id}`.
+- `NotificacionService` (respeta `preferencias_notificaciones.in_app_activo`): asignación, cambio de estado al solicitante, comentarios, solicitudes, alertas SLA.
+- **Tickets**: listado con filtros y columna SLA (rojo si crítico/en riesgo/vencido, "Cumplido" verde), CSV, alta en modal (adjunto opcional), detalle idéntico a `renderTicketDetail` (6 meta-boxes, cambiar estado, agregar nota interna/pública con adjunto, actividad unificada, panel AI Classification con datos de `clasificaciones_ia`/`recomendaciones_ia` o "Pendiente de análisis", "Aplicar recomendación" → nota interna con los pasos).
+- **Asignaciones**: kanban de 5 columnas con drag & drop (`PATCH /asignaciones/{ticket}`), "Resuelto" pide la solución en un modal, técnico toma tickets sin asignar, "Autoasignar con IA" por menor carga activa.
+- **SLA**: 4 tarjetas con tiempos de la política seleccionada y cumplimiento real (30 días), gráfico, tabla de políticas con CRUD en modal (4 reglas + calendario); plantillas globales solo para ADMIN_SAAS; en uso → se desactiva.
+- **Incidencias** (prioridad por matriz, vínculo único a ticket, problema, responsable; técnico actualiza las suyas), **Problemas** (causa raíz, workaround, tickets relacionados), **Solicitudes** (aprobar/rechazar, iniciar/completar, cancelar; solicitante ve las suyas).
+- Comando `sla:revisar` (cada 5 min, sin duplicar avisos) y servicio `scheduler` en `compose.yaml`.
+- Tests: `TicketsTest`, `AsignacionesSlaTest`, `IncidenciasProblemasSolicitudesTest`. 98 tests en verde. Flujo del ticket probado en Chrome headless (alta en modal, nota, asignación, cambio de estado, error de solución en línea).
+
 ## Decisiones
 
 - **Sin Laravel Boost.** `boost:install` reescribe `AGENTS.md`/`CLAUDE.md`; el kit de `.agents/` ya cumple esa función.
@@ -83,6 +95,12 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - **Maestros: campos reales en lugar de los del mockup.** Los formularios del mockup tenían "Usuarios"/"Servicios" como números o "Organización" como texto libre; aquí los conteos se calculan y las relaciones se eligen de listas. La columna "ID" muestra el código (`ORG-001`, `AST-2001`...); los usuarios no tienen código y se muestran como `USR-101` (100 + id).
 - El **Admin SaaS** elige la organización al crear registros de tenant; al editar, la organización no cambia (evita romper FK compuestas).
 - `APP_FALLBACK_LOCALE=en` con `lang/en` publicado: si falta una traducción se ve en inglés en lugar de la clave cruda.
+- **Servicio `scheduler` en `compose.yaml`** (misma imagen y volúmenes que `app`, `schedule:work`, healthcheck `healthcheck-schedule`).
+- **Tickets no se eliminan** (trazabilidad): se cancelan. La primera respuesta se registra al pasar a "En progreso"/"En espera"/"Resuelto" o con el primer comentario público del técnico.
+- **Clasificación mostrada en el panel IA**: el esquema no tiene columna para "Incidente de rendimiento"; por convención `clasificaciones_ia.explicacion` empieza con `"<Clasificación>: <detalle>"` y el panel muestra el texto antes de los dos puntos.
+- **Kanban**: "Resuelto" muestra los resueltos de los últimos 7 días; mover a "Asignado"/"En progreso" sin técnico solo lo permite el propio técnico (se lo autoasigna); el supervisor debe asignar primero o usar "Autoasignar con IA".
+- **Solicitudes** no crean un ticket automáticamente al aprobarse; el técnico las atiende desde el propio módulo (iniciar/completar).
+- La pantalla de SLA agrega (extensión) un selector de política y una tabla de políticas con CRUD, porque el mockup solo simulaba "Nueva política SLA".
 - Rutas de ticket y artículo usan `codigo` como clave (`/tickets/TKT-2026-00452`). Un registro de otra organización devuelve 404 (el scope lo oculta) en lugar de 403, para no revelar su existencia.
 
 ## Usuarios demo
@@ -124,6 +142,8 @@ docker compose exec -T app php artisan route:list --except-vendor
 docker compose exec -T -u root app ./vendor/bin/pint   # formato PSR-12
 docker compose exec -T -u root app sh -c "composer require paquete/nombre && chown -R www-data:www-data vendor"
 docker compose exec -T app php artisan contratos:actualizar-estados
+docker compose exec -T app php artisan sla:revisar
+docker compose up -d scheduler                          # programador (sla:revisar cada 5 min)
 docker compose exec -T -u root app chmod -R a+rwX storage bootstrap/cache   # si aparece error de permisos
 docker compose exec -T pgsql psql -U servicecloud -d servicecloud_ai
 docker compose logs app --tail=100
@@ -141,7 +161,7 @@ docker run --rm --network servicecloudai_default -v "$PWD:/work:ro" -v "$PWD/cap
 
 ## Pendiente
 
-- Fase 4 en adelante.
+- Fase 5 en adelante.
 - Logs técnicos y análisis de logs de ejemplo: se siembran en la fase 5 junto con el analizador.
 - Indexación RAG (`documentos_rag`, `fragmentos_rag`): fase 5 (`php artisan ia:indexar`).
 - Fase 7: confirmar con el equipo en qué nubes se desplegará.

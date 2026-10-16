@@ -463,7 +463,7 @@ class DemoSeeder extends Seeder
         $caso = $this->crearTicket([
             'org' => 'andes', 'codigo' => 'TKT-2026-00452',
             'titulo' => 'La aplicación demora demasiado y finalmente muestra error al consultar clientes.',
-            'descripcion' => "La aplicación demora demasiado y finalmente muestra error al consultar clientes.\n\nDesde las 20:30 el módulo de clientes del ERP tarda más de 30 segundos en responder y luego muestra \"Error al consultar clientes\". Afecta al equipo comercial completo durante el cierre del día.",
+            'descripcion' => 'El módulo de clientes del ERP tarda más de 30 segundos en responder y luego muestra "Error al consultar clientes". La operación se reproduce de forma intermitente durante períodos de carga y afecta al equipo comercial completo durante el cierre del día.',
             'categoria' => 'Aplicaciones', 'servicio' => 'ERP Corporativo', 'activo' => 'APP-ERP-01', 'equipo' => 'Equipo Apps',
             'impacto' => 'alto', 'urgencia' => 'media', 'estado' => 'en_progreso',
             'tecnico' => 'maria.pena@andesmarket.pe', 'solicitante' => 'lucia.vega@andesmarket.pe',

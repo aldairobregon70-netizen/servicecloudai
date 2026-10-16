@@ -494,6 +494,7 @@
 .toast-error .toast-icon{background:rgba(251,113,133,.10);color:var(--danger)}
 .toast-warn .toast-icon{background:rgba(251,191,36,.10);color:var(--warning)}
 .inline-form{display:inline;margin:0}
+[hidden]{display:none!important}
 a.nav-item,a.drop-action,a.icon-mini,a.icon-btn{color:inherit}
 a.nav-item{color:#bfd2ff}
 a.nav-item.active,a.nav-item:hover{color:#fff}

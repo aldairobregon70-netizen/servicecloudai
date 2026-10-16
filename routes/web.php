@@ -30,36 +30,59 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
 
 // --- Aplicación ---
+// Cada módulo exige el permiso de su entrada de menú (config/servicecloud.php: can:modulo,'<clave>');
+// las acciones concretas las autorizan las Policies.
 Route::middleware('auth')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('/buscar', BusquedaController::class)->name('buscar');
 
-    // Cada módulo exige el permiso de su entrada de menú (config/servicecloud.php);
-    // las acciones concretas las autorizan las Policies.
-
-    // Maestros (CRUD con exportación CSV)
-    $maestros = [
+    // CRUD con exportación CSV: clave => [controlador, parámetro de ruta]
+    $crud = [
         'organizaciones' => [OrganizacionController::class, 'organizacion'],
         'usuarios' => [UsuarioController::class, 'usuario'],
         'activos' => [ActivoController::class, 'activo'],
         'servicios' => [ServicioController::class, 'servicio'],
         'contratos' => [ContratoController::class, 'contrato'],
+        'incidencias' => [IncidenciaController::class, 'incidencia'],
+        'problemas' => [ProblemaController::class, 'problema'],
+        'solicitudes' => [SolicitudController::class, 'solicitud'],
     ];
-    foreach ($maestros as $clave => [$controlador, $parametro]) {
+    foreach ($crud as $clave => [$controlador, $parametro]) {
         Route::middleware("can:modulo,'$clave'")->group(function () use ($clave, $controlador, $parametro) {
             Route::get("/$clave/exportar", [$controlador, 'exportar'])->name("$clave.exportar");
             Route::resource($clave, $controlador)->parameters([$clave => $parametro]);
         });
     }
 
-    // Módulos pendientes de las siguientes fases (solo listado)
+    Route::patch('/solicitudes/{solicitud}/{accion}', [SolicitudController::class, 'transicion'])
+        ->middleware("can:modulo,'solicitudes'")
+        ->whereIn('accion', ['aprobar', 'rechazar', 'iniciar', 'completar', 'cancelar'])
+        ->name('solicitudes.transicion');
+
+    // Tickets
+    Route::middleware("can:modulo,'tickets'")->controller(TicketController::class)->group(function () {
+        Route::get('/tickets/exportar', 'exportar')->name('tickets.exportar');
+        Route::resource('tickets', TicketController::class)->except('destroy');
+        Route::patch('/tickets/{ticket}/estado', 'cambiarEstado')->name('tickets.estado');
+        Route::post('/tickets/{ticket}/comentarios', 'comentar')->name('tickets.comentarios');
+        Route::post('/tickets/{ticket}/recomendacion', 'aplicarRecomendacion')->name('tickets.recomendacion');
+        Route::get('/tickets/{ticket}/adjuntos/{adjunto}', 'descargarAdjunto')->name('tickets.adjuntos.descargar');
+    });
+
+    // Asignaciones (kanban)
+    Route::middleware("can:modulo,'asignaciones'")->controller(AsignacionController::class)->group(function () {
+        Route::get('/asignaciones', 'index')->name('asignaciones.index');
+        Route::post('/asignaciones/autoasignar', 'autoasignar')->name('asignaciones.autoasignar');
+        Route::patch('/asignaciones/{ticket}', 'mover')->name('asignaciones.mover');
+    });
+
+    // SLA (políticas y reglas)
+    Route::middleware("can:modulo,'sla'")->group(function () {
+        Route::resource('sla', SlaController::class)->parameters(['sla' => 'politica'])->except('show');
+    });
+
+    // Módulos de las siguientes fases (solo listado por ahora)
     $modulos = [
-        'tickets' => TicketController::class,
-        'incidencias' => IncidenciaController::class,
-        'problemas' => ProblemaController::class,
-        'solicitudes' => SolicitudController::class,
-        'sla' => SlaController::class,
-        'asignaciones' => AsignacionController::class,
         'conocimiento' => ConocimientoController::class,
         'asistente' => AsistenteController::class,
         'logs' => AnalisisLogController::class,
