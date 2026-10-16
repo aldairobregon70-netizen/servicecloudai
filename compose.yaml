@@ -16,8 +16,15 @@ services:
       - "${APP_PORT:-8000}:8080"
     volumes:
       - .:/var/www/html
+      # vendor/ vive en un volumen de Docker (sistema de archivos Linux): en Windows leer miles
+      # de archivos desde la carpeta montada hacía que cada petición tardara 2-5 s.
+      # Se llena con: docker compose exec -T -u root app sh -c "composer install && chown -R www-data:www-data vendor"
+      - vendor:/var/www/html/vendor
     environment:
-      PHP_OPCACHE_ENABLE: "0"
+      # OPcache también en desarrollo; con REVALIDATE_FREQ=0 los cambios de código se ven al instante.
+      PHP_OPCACHE_ENABLE: "1"
+      PHP_OPCACHE_VALIDATE_TIMESTAMPS: "1"
+      PHP_OPCACHE_REVALIDATE_FREQ: "0"
       SSL_MODE: "off"
     depends_on:
       pgsql:
@@ -60,3 +67,4 @@ services:
 volumes:
   pgdata:
   pgadmin:
+  vendor:

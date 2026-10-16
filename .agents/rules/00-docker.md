@@ -28,6 +28,8 @@ docker compose exec -T pgsql psql -U servicecloud -d servicecloud_ai -c "select 
 - Cuando un workflow o regla diga "ejecuta `php artisan …`", tradúcelo a `docker compose exec -T app php artisan …`.
 - Si los contenedores no están arriba (`docker compose ps`), ejecuta `docker compose up -d` y espera a que `pgsql` esté *healthy*.
 - Si cambias `Dockerfile` o necesitas una extensión PHP nueva: edita el `Dockerfile` (stage `base`, línea `install-php-extensions`), luego `docker compose up -d --build`. Avisa al desarrollador.
+- `vendor/` vive en el volumen Docker `vendor` (rendimiento en Windows). Instalar o agregar paquetes: `docker compose exec -T -u root app sh -c "composer require paquete/nombre && chown -R www-data:www-data vendor"`.
+- El código montado aparece como `root` dentro del contenedor: comandos que escriben archivos del proyecto (`pint`, `make:*`, `key:generate`) van con `-u root`. Si `storage/` da error de permisos: `docker compose exec -T -u root app chmod -R a+rwX storage bootstrap/cache`.
 - Logs: `docker compose logs app --tail=100` y `storage/logs/laravel.log`.
 - Los archivos generados con `artisan make:*` aparecen directamente en la carpeta del proyecto (volumen montado).
 

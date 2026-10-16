@@ -160,10 +160,11 @@ git clone git@github.com:TU_USUARIO/servicecloudai.git
 cd servicecloudai
 copy .env.example .env
 docker compose up -d --build
-docker compose exec app composer install
-docker compose exec app php artisan key:generate
+docker compose exec -u root app sh -c "composer install && chown -R www-data:www-data vendor && chmod -R a+rwX storage bootstrap/cache"
+docker compose exec -u root app php artisan key:generate
 docker compose exec app php artisan migrate:fresh --seed
 ```
+(`vendor/` vive en un volumen de Docker para que la app responda rápido en Windows; por eso `composer` se ejecuta como `root` y luego se devuelve la propiedad a `www-data`.)
 (Los que usen Linux agregan `USER_ID=1000` y `GROUP_ID=1000` a su `.env` antes del `up`, para evitar problemas de permisos.)
 
 ---
@@ -221,7 +222,8 @@ La IA funciona sin clave con el modo `simulado`. Para usar Gemini: crea una clav
 - **Puerto 8000, 5432 o 5050 ocupado**: agrega `APP_PORT=8001`, `FORWARD_DB_PORT=5433` o `PGADMIN_PORT=5051` al `.env` y `docker compose up -d`.
 - **La base de pruebas no existe**: el script de `docker/pgsql` solo corre la primera vez que se crea el volumen. Créala con `docker compose exec pgsql createdb -U servicecloud servicecloud_ai_test`.
 - **Página en blanco o error 500 después de clonar**: falta `composer install` o `php artisan key:generate` (ver Paso 5).
-- **La app va lenta**: es normal que Docker en Windows lea más lento los archivos de `C:\`. Para este proyecto es suficiente; si se vuelve molesto, coméntalo y se puede optimizar (por ejemplo, mover `vendor` a un volumen).
+- **La app va lenta (2-5 s por página)**: revisa que `vendor/` esté en el volumen (`docker compose exec app ls vendor | head`). Si está vacío, ejecuta el `composer install` del Paso 5. OPcache está activo en desarrollo y revalida los archivos en cada petición, así que los cambios de código se ven al instante.
+- **Error 500 `tempnam()` o `Permission denied` en `storage/`**: `docker compose exec -u root app chmod -R a+rwX storage bootstrap/cache`.
 
 ## Qué resuelve el kit por ti
 
