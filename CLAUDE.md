@@ -1,47 +1,16 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# ServiceCloud AI — instrucciones para Claude Code
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+Las instrucciones del proyecto están en `AGENTS.md`. Léelo antes de cualquier tarea, junto con:
 
-## Prerequisites
+- `.agents/rules/` — reglas siempre activas (empieza por `00-docker.md`).
+- `.agents/skills/servicecloud-schema/SKILL.md` — resumen del esquema PostgreSQL.
+- `.agents/skills/servicecloud-ui/SKILL.md` — mapa del mockup `docs/mockup/index.html`.
+- `.agents/workflows/` — fases de construcción y verificación.
+- `docs/PLAN.md` — estado actual, decisiones y pendientes.
 
-Verify that PHP and Composer are available:
+Resumen mínimo:
 
-```sh
-php -v
-composer -V
-```
-
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
-
-macOS:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
-```
-
-Windows PowerShell:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
-
-Linux:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
-
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
-
-## Agent Setup
-
-Install Laravel Boost from the application root before making application changes:
-
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
-
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
+- Windows sin PHP local: todo comando de PHP, Composer o Artisan va con `docker compose exec -T app …`; la base con `docker compose exec -T pgsql …`. App en http://localhost:8000.
+- El esquema `database/sql/servicecloud_ai_schema.sql` no se rediseña; se carga con una migración.
+- La interfaz debe ser idéntica a `docs/mockup/index.html`, con datos reales de PostgreSQL.
+- No se usa Laravel Boost (decisión registrada en `docs/PLAN.md`).
