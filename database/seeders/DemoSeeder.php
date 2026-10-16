@@ -358,6 +358,10 @@ class DemoSeeder extends Seeder
         $vencResolucion = $this->sla->sumarMinutos($creado, $regla->resolucion_minutos, $horario);
         $avanzado = ! in_array($estado, [EstadoTicket::Abierto, EstadoTicket::Cancelado], true);
         $primeraRespuesta = $avanzado ? $creado->addMinutes(max(3, (int) ($regla->respuesta_minutos * ($d['factor_respuesta'] ?? 0.5)))) : null;
+        if ($primeraRespuesta && $primeraRespuesta > $this->ahora) {
+            // Ningún evento demo puede quedar en el futuro
+            $primeraRespuesta = $this->ahora->subMinute()->max($creado->addMinutes(3));
+        }
         $resuelto = in_array($estado, [EstadoTicket::Resuelto, EstadoTicket::Cerrado], true)
             ? ($d['resuelto'] ?? $creado->addMinutes((int) ($regla->resolucion_minutos * ($d['factor_resolucion'] ?? 0.6))))
             : null;
@@ -415,7 +419,7 @@ class DemoSeeder extends Seeder
             TicketHistorial::create(['ticket_id' => $ticket->id, 'usuario_id' => $asignador?->id, 'campo' => 'tecnico', 'valor_anterior' => null, 'valor_nuevo' => $tecnico->nombre, 'fecha' => $fechaAsignacion]);
             TicketHistorial::create(['ticket_id' => $ticket->id, 'usuario_id' => $asignador?->id, 'campo' => 'estado', 'valor_anterior' => 'abierto', 'valor_nuevo' => 'asignado', 'fecha' => $fechaAsignacion]);
         }
-        $cadena = ['en_progreso' => $primeraRespuesta, 'en_espera' => $primeraRespuesta?->addMinutes(20), 'resuelto' => $resuelto, 'cerrado' => $cerrado];
+        $cadena = ['en_progreso' => $primeraRespuesta, 'en_espera' => $primeraRespuesta?->addMinutes(20)->min($this->ahora), 'resuelto' => $resuelto, 'cerrado' => $cerrado];
         $anterior = 'asignado';
         foreach ($cadena as $valor => $fecha) {
             if (! $fecha || ! $this->estadoAlcanza($estado, $valor)) {
@@ -553,7 +557,7 @@ class DemoSeeder extends Seeder
         }
     }
 
-    /** 46 tickets de los últimos 7 días, repartidos entre organizaciones, para dashboard y reportes. */
+    /** 100 tickets de los últimos 30 días (46 en la última semana), repartidos entre organizaciones, para dashboard y reportes. */
     private function ticketsHistoricos(): void
     {
         $plantillas = [
@@ -583,13 +587,18 @@ class DemoSeeder extends Seeder
         $orgsPeso = ['andes', 'andes', 'andes', 'novatech', 'novatech', 'novatech', 'logistica', 'pacifico'];
         $clasificador = ModeloIa::where('tipo', 'clasificacion')->where('proveedor', 'simulado')->value('id');
 
-        for ($i = 0; $i < 46; $i++) {
-            $numero = 401 + $i;
+        for ($i = 0; $i < 100; $i++) {
+            $numero = 347 + $i;
             $org = $orgsPeso[mt_rand(0, count($orgsPeso) - 1)];
             [$tecnicos, $solicitantes, $servicios] = $participantes[$org];
             [$categoria, $titulo, $impacto, $urgencia] = $plantillas[mt_rand(0, count($plantillas) - 1)];
-            // Del más antiguo (7 días) al más reciente (unas 4 horas)
-            $creado = $this->ahora->subMinutes((int) (7 * 1440 - $i * (7 * 1440 - 240) / 45))->subMinutes(mt_rand(0, 50));
+            // 20 tickets entre los días 30 y 15, 34 entre los días 14 y 8, y 46 desde el día 7 hasta unas 4 horas atrás
+            $minutosAtras = match (true) {
+                $i < 20 => 30 * 1440 - $i * (15 * 1440) / 19,
+                $i < 54 => 14 * 1440 - ($i - 20) * (6 * 1440) / 33,
+                default => 7 * 1440 - ($i - 54) * (7 * 1440 - 240) / 45,
+            };
+            $creado = $this->ahora->subMinutes((int) $minutosAtras)->subMinutes(mt_rand(0, 50));
             $edadHoras = $this->ahora->diffInHours($creado, true);
 
             $azar = mt_rand(1, 100);

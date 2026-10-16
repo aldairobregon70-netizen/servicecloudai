@@ -6,7 +6,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 
 - [x] **Fase 0 — Entorno:** contenedores, `.env` y `phpunit.xml` para PostgreSQL, este plan.
 - [x] **Fase 1 — Base de datos:** migración del esquema SQL, enums, scope multi-tenant, modelos, seeders demo.
-- [ ] **Fase 2 — Base de la app:** CSS del mockup, layout, login, componentes Blade, menú por roles, JS base.
+- [x] **Fase 2 — Base de la app:** CSS del mockup, layout, login, componentes Blade, menú por roles, JS base.
 - [ ] **Fase 3 — Maestros:** Organizaciones, Usuarios, Activos, Servicios, Contratos (CRUD completo).
 - [ ] **Fase 4 — Operación:** Tickets + SLA, Asignaciones (kanban), Incidencias, Problemas, Solicitudes, SLA, notificaciones, scheduler.
 - [ ] **Fase 5 — IA:** drivers simulado/Gemini, base de conocimiento + RAG, clasificación, asistente, análisis de logs.
@@ -31,8 +31,20 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - Trait `PerteneceAOrganizacion`: global scope por la organización del usuario autenticado (ADMIN_SAAS y consola sin filtro) y asignación forzada de `organizacion_id` al crear. Lectura de registros globales (`organizacion_id NULL`) en políticas SLA, artículos, documentos RAG y notificaciones.
 - 36 modelos con `$table`, `$fillable`, casts (enums, JSONB, fechas) y relaciones; `Usuario` autenticable con `password_hash`.
 - `SlaService` básico (suma de minutos 24x7 y laboral L-V 08:00-18:00); se completa en la fase 4.
-- Seeders: `PlataformaSeeder` (30 permisos por rol, 7 modelos IA, plantillas SLA Gold/Silver/Bronze, límites de planes), `DemoSeeder` (5 organizaciones, 21 usuarios, equipos, categorías, SLA por organización, 5 contratos, 11 servicios, 10 activos, 55 tickets con SLA/historial/asignaciones, 42 clasificaciones IA, incidencias, problemas, solicitudes, notificaciones), `ConocimientoSeeder` (8 artículos, 6 públicos con contenido extenso para RAG).
+- Seeders: `PlataformaSeeder` (30 permisos por rol, 7 modelos IA, plantillas SLA Gold/Silver/Bronze, límites de planes), `DemoSeeder` (5 organizaciones, 21 usuarios, equipos, categorías, SLA por organización, 5 contratos, 11 servicios, 10 activos, 109 tickets de 30 días con SLA/historial/asignaciones, clasificaciones IA, incidencias, problemas, solicitudes, notificaciones), `ConocimientoSeeder` (8 artículos, 6 públicos con contenido extenso para RAG).
 - Tests: `EsquemaTest`, `ModelosTest` (relaciones, aislamiento multi-tenant), `ReglasNegocioTest` (matriz de prioridad, SLA laboral). 16 tests en verde.
+
+### Fase 2 (16/10/2026)
+
+- `public/css/servicecloud.css`: bloque `<style>` del mockup copiado literalmente + sección `/* === Extensiones ServiceCloud === */` (login, paginación, errores de validación, toasts de error, logout móvil, corrección del overlay móvil).
+- `config/servicecloud.php`: menú de 18 entradas (ruta, ícono, etiqueta, roles, título y descripción del `pageHeader`) y configuración de IA.
+- Layout `layouts/app.blade.php` idéntico al mockup (sidebar, header con búsqueda global, Asistente IA, campana con dropdown real, perfil con logout real, modal y toasts). `layouts/guest.blade.php` + login con la misma identidad visual. Páginas de error 403/404/419.
+- Componentes Blade: `badge`, `page-header`, `kpi`, `chart-card`, `activity`, `meta-box`, `timeline-item`, `rag-article`, `empty-state`, `form-field`; parciales de toasts, paginación y notificaciones.
+- `public/js/servicecloud.js`: sidebar/drawer, dropdowns, Escape, modal genérico (`data-modal-url`, `data-modal-template`, `data-confirmar`), formularios AJAX con errores por campo (`form[data-ajax]`), filtros de listado, `scFetch()` con CSRF, `scInitChart()` con las opciones de `initChart()`, búsqueda global.
+- Login propio (estado activo, organización no suspendida, `ultimo_acceso`, 5 intentos/min). Gate `modulo` + middleware `can:modulo,'<clave>'` en las 17 rutas de módulos (403 por URL).
+- Dashboard con datos reales (`DashboardService`): 5 KPIs con tendencia, 4 gráficos, Insights IA y actividad reciente, según el alcance del rol. Búsqueda global `/buscar` (tickets, usuarios, activos; respeta tenant y rol).
+- Tests: `AutenticacionTest`, `NavegacionTest`. 28 tests en verde.
+- Verificación visual con capturas headless (`docs/pruebas/captura-ui.js`): dashboard y login comparados con el mockup en 1440 px y 390 px.
 
 ## Decisiones
 
@@ -47,6 +59,13 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - **Fechas demo relativas:** los tickets del mockup se crean relativos a la hora del seed para que el "SLA restante" coincida con el mockup (00452 → 01h 12m, 00451 → 21 min). Los contratos usan fechas fijas de 2026.
 - **Colores de badges** no definidos en el mockup: Bloqueado/Suspendida/Rechazada = red, Cancelado/Retirado/Archivado = gray, Aprobada = cyan, En análisis = purple.
 - **Tests** siembran los datos demo (`$seed = true` en `Tests\TestCase`) porque `RefreshDatabase` migra una sola vez por proceso. Caché de PHPUnit en `storage/framework/cache/phpunit`.
+- **Overlay móvil del mockup:** en ≤1024 px el mockup mostraba `.mobile-overlay` siempre (pantalla borrosa). Se corrige en las extensiones CSS para que solo aparezca con el menú abierto.
+- **Logout en móvil:** en ≤760 px el header oculta el bloque de usuario; se agrega "Cerrar sesión" al pie del sidebar solo en ese ancho.
+- **Sidebar contraído** se recuerda entre páginas con `localStorage` (preferencia local; sin ella todo funciona igual).
+- **Formularios en modal** se envían por `fetch` (`form[data-ajax]`): los errores 422 se pintan debajo de cada campo sin cerrar el modal; si todo va bien el servidor responde `{redirect}` y el toast llega por `session('ok')`.
+- **Filtros de listados** en el servidor (paginación correcta): los selects envían al cambiar y la búsqueda tras 450 ms de pausa.
+- Dashboard y búsqueda global se adelantaron a la fase 2 para no mostrar números fijos; la fase 6 agrega caché de 60 s y ajustes.
+- "Ver reportes" del dashboard solo se muestra a roles con acceso a Reportes.
 - Rutas de ticket y artículo usan `codigo` como clave (`/tickets/TKT-2026-00452`). Un registro de otra organización devuelve 404 (el scope lo oculta) en lugar de 403, para no revelar su existencia.
 
 ## Usuarios demo
@@ -93,9 +112,17 @@ docker compose logs app --tail=100
 
 - App: http://localhost:8000 · pgAdmin: http://localhost:5050 (`admin@servicecloud.ai` / `admin`)
 
+Capturas de pantalla para comparar con el mockup (Chrome headless en Docker; las imágenes quedan en `capturas/`):
+
+```bash
+docker run --rm --network servicecloudai_default -v "$PWD:/work:ro" -v "$PWD/capturas:/out" \
+  -v "$PWD/docs/pruebas/captura-ui.js:/usr/src/app/captura.js:ro" zenika/alpine-chrome:with-puppeteer \
+  node captura.js admin@servicecloud.ai /,/tickets 1440 dashboard,tickets
+```
+
 ## Pendiente
 
-- Fase 2 en adelante.
+- Fase 3 en adelante.
 - Logs técnicos y análisis de logs de ejemplo: se siembran en la fase 5 junto con el analizador.
 - Indexación RAG (`documentos_rag`, `fragmentos_rag`): fase 5 (`php artisan ia:indexar`).
 - Fase 7: confirmar con el equipo en qué nubes se desplegará.

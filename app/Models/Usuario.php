@@ -139,6 +139,14 @@ class Usuario extends Authenticatable
         return $iniciales ?: '--';
     }
 
+    /** ¿El rol del usuario puede ver este módulo del menú? (config/servicecloud.php) */
+    public function puedeVerModulo(string $clave): bool
+    {
+        $roles = config("servicecloud.menu.$clave.roles", []);
+
+        return $this->tieneRol(...$roles);
+    }
+
     public function estaActivo(): bool
     {
         return $this->estado === EstadoUsuario::Activo;

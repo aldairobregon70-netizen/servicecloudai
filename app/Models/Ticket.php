@@ -6,9 +6,11 @@ use App\Enums\EstadoTicket;
 use App\Enums\Impacto;
 use App\Enums\OrigenTicket;
 use App\Enums\Prioridad;
+use App\Enums\Rol;
 use App\Enums\TipoTicket;
 use App\Enums\Urgencia;
 use App\Models\Concerns\PerteneceAOrganizacion;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -133,6 +135,33 @@ class Ticket extends Model
     public function incidencia(): HasOne
     {
         return $this->hasOne(Incidencia::class, 'ticket_id');
+    }
+
+    /**
+     * Alcance por rol, además del filtro de organización:
+     * técnico → asignados a él; solicitante → los que registró.
+     */
+    public function scopeVisiblesPara(Builder $consulta, Usuario $usuario): Builder
+    {
+        if ($usuario->esAdminSaas() || $usuario->tieneRol(Rol::AdminOrganizacion, Rol::Supervisor)) {
+            return $consulta;
+        }
+        if ($usuario->tieneRol(Rol::Tecnico)) {
+            return $consulta->where(fn (Builder $q) => $q->where('tecnico_id', $usuario->id)->orWhere('solicitante_id', $usuario->id));
+        }
+
+        return $consulta->where('solicitante_id', $usuario->id);
+    }
+
+    /** Tickets que aún consumen SLA (no resueltos, cerrados ni cancelados). */
+    public function scopeAbiertos(Builder $consulta): Builder
+    {
+        return $consulta->whereNotIn('estado', [EstadoTicket::Resuelto, EstadoTicket::Cerrado, EstadoTicket::Cancelado]);
+    }
+
+    public function estaAbierto(): bool
+    {
+        return ! in_array($this->estado, [EstadoTicket::Resuelto, EstadoTicket::Cerrado, EstadoTicket::Cancelado], true);
     }
 
     /** Nombre de la categoría para mostrar (normalizada o heredada). */
