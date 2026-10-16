@@ -98,10 +98,24 @@
         <div class="ai-class"><span>Categoría</span><b>{{ $clasificacion->categoria_sugerida ?? '—' }}</b></div>
         <div class="ai-class"><span>Prioridad</span><b style="color:{{ $colorPrioridad[$clasificacion->prioridad_sugerida?->value] ?? '#fff' }}">{{ $clasificacion->prioridad_sugerida?->label() ?? '—' }}</b></div>
         <div class="ai-class"><span>Confianza</span><div class="confidence"><div class="progress"><span style="width:{{ round($clasificacion->confianza * 100) }}%"></span></div><b>{{ round($clasificacion->confianza * 100) }}%</b></div></div>
+        @if ($clasificacion->aceptada === null && $usuario->can('priorizar', $ticket))
+          <div class="page-actions" style="margin-bottom:10px">
+            <button class="btn btn-secondary btn-sm" type="button" style="flex:1" data-confirmar="¿Aplicar la prioridad {{ $clasificacion->prioridad_sugerida?->label() }} y la categoría {{ $clasificacion->categoria_sugerida }} sugeridas por la IA?" data-accion="{{ route('tickets.clasificacion.decidir', [$ticket, $clasificacion, 'aceptar']) }}" data-metodo="PATCH" data-titulo-confirmar="Aceptar sugerencia IA" data-boton-confirmar="Aceptar" data-icono-confirmar="check" data-clase-confirmar="btn-primary"><i data-lucide="check"></i> Aceptar</button>
+            <button class="btn btn-secondary btn-sm" type="button" style="flex:1" data-confirmar="¿Rechazar la clasificación sugerida por la IA?" data-accion="{{ route('tickets.clasificacion.decidir', [$ticket, $clasificacion, 'rechazar']) }}" data-metodo="PATCH" data-titulo-confirmar="Rechazar sugerencia IA" data-boton-confirmar="Rechazar" data-icono-confirmar="x"><i data-lucide="x"></i> Rechazar</button>
+          </div>
+        @elseif ($clasificacion->aceptada !== null)
+          <p class="form-hint" style="margin:0 0 10px">Sugerencia {{ $clasificacion->aceptada ? 'aceptada' : 'rechazada' }}.</p>
+        @endif
       @else
         <div class="ai-class"><span>Estado</span><b>Pendiente de análisis</b></div>
         <p class="ticket-desc">La IA todavía no clasificó este ticket.</p>
       @endif
+      @can('update', $ticket)
+        <form method="POST" action="{{ route('tickets.clasificar', $ticket) }}" data-ajax id="formClasificar" style="margin-bottom:6px">
+          @csrf
+          <button class="btn btn-secondary btn-sm" style="width:100%" type="submit"><i data-lucide="sparkles"></i> {{ $clasificacion ? 'Reanalizar con IA' : 'Analizar con IA' }}</button>
+        </form>
+      @endcan
 
       <div class="card-title" style="margin-top:17px"><h3>Posibles causas</h3><span>NLP + contexto</span></div>
       @if ($recomendacion && $recomendacion->causas_probables)

@@ -11,13 +11,16 @@ use App\Http\Requests\CambiarEstadoTicketRequest;
 use App\Http\Requests\ComentarTicketRequest;
 use App\Http\Requests\GuardarTicketRequest;
 use App\Models\Activo;
+use App\Models\AnalisisLogIa;
 use App\Models\CategoriaTicket;
+use App\Models\ClasificacionIa;
 use App\Models\Organizacion;
 use App\Models\Servicio;
 use App\Models\Ticket;
 use App\Models\TicketAdjunto;
 use App\Models\Usuario;
 use App\Services\ActividadTicket;
+use App\Services\AI\ClasificadorTickets;
 use App\Services\SlaService;
 use App\Services\TicketService;
 use App\Support\Csv;
@@ -59,21 +62,34 @@ class TicketController extends Controller
     public function create(Request $request): View
     {
         $this->authorize('create', Ticket::class);
+        // Prellenado opcional (p. ej. "Crear ticket desde análisis" del AI Log Analyzer)
         $ticket = new Ticket([
-            'tipo' => TipoTicket::Incidente, 'impacto' => Impacto::Medio, 'urgencia' => Urgencia::Media,
+            'tipo' => TipoTicket::Incidente,
+            'impacto' => Impacto::tryFrom((string) $request->query('impacto')) ?? Impacto::Medio,
+            'urgencia' => Urgencia::tryFrom((string) $request->query('urgencia')) ?? Urgencia::Media,
             'titulo' => $request->query('titulo'), 'descripcion' => $request->query('descripcion'),
         ]);
+        if ($request->filled('categoria')) {
+            $ticket->categoria_id = CategoriaTicket::where('nombre', (string) $request->query('categoria'))->value('id');
+        }
 
-        return $this->vistaModal('tickets.form', $this->datosFormulario($request, $ticket));
+        return $this->vistaModal('tickets.form', $this->datosFormulario($request, $ticket) + [
+            'analisisId' => AnalisisLogIa::whereKey((int) $request->query('analisis'))->value('id'),
+        ]);
     }
 
     public function store(GuardarTicketRequest $request): JsonResponse|RedirectResponse
     {
         $datos = $request->datosConOrganizacion();
-        unset($datos['adjunto']);
+        $analisisId = $datos['analisis_id'] ?? null;
+        unset($datos['adjunto'], $datos['analisis_id']);
         $ticket = $this->tickets->crear($datos, $request->user());
         if ($request->hasFile('adjunto')) {
             $this->tickets->adjuntar($ticket, $request->file('adjunto'), $request->user());
+        }
+        if ($analisisId && $analisis = AnalisisLogIa::where('organizacion_id', $ticket->organizacion_id)->find($analisisId)) {
+            $analisis->update(['ticket_id' => $ticket->id]);
+            $analisis->logs()->update(['ticket_id' => $ticket->id]);
         }
 
         return $this->guardado(route('tickets.show', $ticket), ['Ticket creado', "{$ticket->codigo} · prioridad {$ticket->prioridad->label()}, vence {$ticket->vencimiento_resolucion?->format('d/m/Y H:i')}."]);
@@ -89,8 +105,11 @@ class TicketController extends Controller
             'ticket' => $ticket,
             'estadoSla' => $this->sla->estadoSla($ticket),
             'actividad' => app(ActividadTicket::class)->para($ticket, $usuario),
-            'clasificacion' => $ticket->clasificaciones()->latest('creado_en')->first(),
-            'recomendacion' => $ticket->recomendaciones()->with('fuentes')->latest('creado_en')->first(),
+            'clasificacion' => $ticket->clasificaciones()->latest('creado_en')->latest('id')->first(),
+            // Las fuentes internas no se muestran a quien no puede verlas (solicitante)
+            'recomendacion' => $ticket->recomendaciones()->latest('creado_en')->latest('id')
+                ->with(['fuentes' => fn ($q) => $q->when(! $usuario->can('verInternos', $ticket), fn ($w) => $w->where('visibilidad', '!=', 'interna'))])
+                ->first(),
             'estadosPosibles' => collect([$ticket->estado, ...$ticket->estado->transiciones()])
                 ->filter(fn (EstadoTicket $e) => $e === $ticket->estado || $ticket->tecnico_id || ! in_array($e, [EstadoTicket::Asignado, EstadoTicket::EnProgreso], true))
                 ->mapWithKeys(fn (EstadoTicket $e) => [$e->value => $e->label()])->all(),
@@ -131,6 +150,31 @@ class TicketController extends Controller
         });
 
         return $this->guardado(route('tickets.show', $ticket), ['Nota agregada', 'Se añadió '.($request->esInterno() ? 'una nota interna' : 'un comentario')." a {$ticket->codigo}."]);
+    }
+
+    /** POST /tickets/{ticket}/clasificar: analiza (o reanaliza) el ticket con IA. */
+    public function clasificar(Request $request, Ticket $ticket, ClasificadorTickets $clasificador): JsonResponse|RedirectResponse
+    {
+        $this->authorize('update', $ticket);
+        $clasificacion = $clasificador->analizar($ticket, $request->user());
+
+        return $this->guardado(route('tickets.show', $ticket), ['Análisis IA completado', strtok((string) $clasificacion->explicacion, ':').' · confianza '.round($clasificacion->confianza * 100).'%.']);
+    }
+
+    /** PATCH /tickets/{ticket}/clasificacion/{clasificacion}/{decision}: aceptar o rechazar la sugerencia. */
+    public function decidirClasificacion(Request $request, Ticket $ticket, ClasificacionIa $clasificacion, string $decision, ClasificadorTickets $clasificador): RedirectResponse
+    {
+        $this->authorize('priorizar', $ticket);
+        abort_unless($clasificacion->ticket_id === $ticket->id, 404);
+
+        if ($decision === 'aceptar') {
+            $clasificador->aceptar($clasificacion, $request->user());
+
+            return back()->with('ok', ['Sugerencia aplicada', 'Se aplicó la prioridad y categoría sugeridas por la IA.']);
+        }
+        $clasificador->rechazar($clasificacion);
+
+        return back()->with('aviso', ['Sugerencia rechazada', 'La clasificación IA quedó registrada como rechazada.']);
     }
 
     /** "Aplicar recomendación": agrega los pasos sugeridos por la IA como nota interna del plan de resolución. */

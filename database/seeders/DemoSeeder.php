@@ -22,7 +22,6 @@ use App\Models\PlanSaas;
 use App\Models\PoliticaSla;
 use App\Models\PreferenciaNotificacion;
 use App\Models\Problema;
-use App\Models\RecomendacionIa;
 use App\Models\Rol;
 use App\Models\Servicio;
 use App\Models\Solicitud;
@@ -32,6 +31,9 @@ use App\Models\TicketComentario;
 use App\Models\TicketHistorial;
 use App\Models\TicketSla;
 use App\Models\Usuario;
+use App\Services\AI\AnalizadorLogs;
+use App\Services\AI\ClasificadorTickets;
+use App\Services\AI\IndexadorConocimiento;
 use App\Services\SlaService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
@@ -81,10 +83,15 @@ class DemoSeeder extends Seeder
         $this->servicios();
         $this->activos();
         $this->call(ConocimientoSeeder::class);
+        $this->command?->getOutput()?->writeln('  Indexando base de conocimiento para RAG...');
+        foreach (ArticuloConocimiento::where('estado', 'publicado')->get() as $articulo) {
+            app(IndexadorConocimiento::class)->indexar($articulo);
+        }
         $this->ticketsMockup();
         $this->ticketsHistoricos();
         $this->incidenciasProblemasSolicitudes();
         $this->notificaciones();
+        $this->analisisLogs();
     }
 
     // ---------------------------------------------------------------------
@@ -532,29 +539,33 @@ class DemoSeeder extends Seeder
         ]);
     }
 
-    /** Clasificación y recomendación IA del caso de ejemplo obligatorio. */
+    /**
+     * Clasificación y recomendación del caso de ejemplo obligatorio, generadas con el
+     * pipeline real (ClasificadorTickets + RAG) para que coincidan con lo que hace la app.
+     */
     private function iaParaCaso(Ticket $ticket): void
     {
-        $clasificador = ModeloIa::where('tipo', 'clasificacion')->where('proveedor', 'simulado')->value('id');
-        $generativo = ModeloIa::where('tipo', 'generativo')->where('proveedor', 'simulado')->value('id');
+        $clasificacion = app(ClasificadorTickets::class)->analizar($ticket);
+        $clasificacion->update(['aceptada' => true, 'creado_en' => $ticket->creado_en->addMinute()]);
+        $ticket->recomendaciones()->update(['creado_en' => $ticket->creado_en->addMinutes(2)]);
+    }
 
-        ClasificacionIa::create([
-            'ticket_id' => $ticket->id, 'modelo_id' => $clasificador,
-            'categoria_sugerida' => 'Aplicaciones', 'prioridad_sugerida' => 'alta', 'confianza' => 0.94,
-            'explicacion' => 'Incidente de rendimiento: términos "demora demasiado", "error" y "consultar clientes" indican degradación de una aplicación empresarial con impacto en usuarios.',
-            'aceptada' => true, 'creado_en' => $ticket->creado_en->addMinute(),
-        ]);
-        $recomendacion = RecomendacionIa::create([
-            'ticket_id' => $ticket->id, 'modelo_id' => $generativo,
-            'diagnostico' => 'El síntoma encaja con un incidente de rendimiento. Las señales más probables son una consulta SQL lenta y la saturación del pool de conexiones.',
-            'causas_probables' => ['consulta SQL lenta', 'saturación del pool de conexiones', 'latencia de red', 'recursos insuficientes', 'dependencia externa lenta'],
-            'pasos_sugeridos' => ['Revisar el tiempo de ejecución de la consulta de clientes con EXPLAIN ANALYZE.', 'Medir conexiones activas y en espera del pool.', 'Revisar métricas de CPU y RAM de APP-ERP-01 y DB-PROD-01.', 'Medir la latencia hacia dependencias externas.', 'Aplicar índices o paginación y validar el tiempo de respuesta.'],
-            'confianza' => 0.94, 'creado_en' => $ticket->creado_en->addMinutes(2),
-        ]);
-        $relevancias = ['KB-001' => 0.96, 'KB-002' => 0.91, 'KB-003' => 0.87];
-        foreach ($relevancias as $codigo => $relevancia) {
-            $recomendacion->fuentes()->attach(ArticuloConocimiento::where('codigo', $codigo)->value('id'), ['relevancia' => $relevancia]);
-        }
+    /** Dos análisis de logs de ejemplo (alimentan "patrones encontrados en logs" del dashboard). */
+    private function analisisLogs(): void
+    {
+        $analizador = app(AnalizadorLogs::class);
+        $hoy = $this->ahora->format('Y-m-d');
+        $erp = "{$hoy} 09:14:12 ERROR [api] Database connection timeout to erp-db.andes.local\n"
+            ."{$hoy} 09:14:13 WARN  [service] Response time detected (5230ms)\n"
+            ."{$hoy} 09:14:14 INFO  [pool] Active connections: 92 / 100\n"
+            ."{$hoy} 09:14:15 WARN  [pool] Wait queue length: 18\n"
+            ."{$hoy} 09:14:18 ERROR [api] Retry limit exceeded for customer-query";
+        $analizador->analizar($erp, $this->u('maria.pena@andesmarket.pe'), $this->orgs['andes']->id);
+
+        $crm = "{$hoy} 08:02:41 WARN  [crm-web] Response time detected (4120ms)\n"
+            ."{$hoy} 08:02:44 INFO  [pool] Active connections: 71 / 100\n"
+            ."{$hoy} 08:02:50 INFO  [cache] Cache hit ratio: 54%";
+        $analizador->analizar($crm, $this->u('luis.ramirez@novatech.pe'), $this->orgs['novatech']->id);
     }
 
     /** 100 tickets de los últimos 30 días (46 en la última semana), repartidos entre organizaciones, para dashboard y reportes. */

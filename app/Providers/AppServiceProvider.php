@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Notificacion;
 use App\Models\Usuario;
+use App\Services\AI\GestorIA;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -18,7 +19,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Un gestor de IA por petición/tarea (lee AI_DRIVER y recuerda si hubo fallback)
+        $this->app->scoped(GestorIA::class, fn () => GestorIA::crear());
     }
 
     public function boot(): void

@@ -66,6 +66,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('/tickets/{ticket}/estado', 'cambiarEstado')->name('tickets.estado');
         Route::post('/tickets/{ticket}/comentarios', 'comentar')->name('tickets.comentarios');
         Route::post('/tickets/{ticket}/recomendacion', 'aplicarRecomendacion')->name('tickets.recomendacion');
+        Route::post('/tickets/{ticket}/clasificar', 'clasificar')->middleware('throttle:ia')->name('tickets.clasificar');
+        Route::patch('/tickets/{ticket}/clasificacion/{clasificacion}/{decision}', 'decidirClasificacion')
+            ->whereIn('decision', ['aceptar', 'rechazar'])->name('tickets.clasificacion.decidir');
         Route::get('/tickets/{ticket}/adjuntos/{adjunto}', 'descargarAdjunto')->name('tickets.adjuntos.descargar');
     });
 
@@ -81,11 +84,23 @@ Route::middleware('auth')->group(function () {
         Route::resource('sla', SlaController::class)->parameters(['sla' => 'politica'])->except('show');
     });
 
-    // Módulos de las siguientes fases (solo listado por ahora)
+    // Base de conocimiento (RAG)
+    Route::middleware("can:modulo,'conocimiento'")->group(function () {
+        Route::resource('conocimiento', ConocimientoController::class)->parameters(['conocimiento' => 'articulo']);
+    });
+
+    // Asistente IA y análisis de logs (20 consultas/minuto por usuario)
+    Route::middleware("can:modulo,'asistente'")->group(function () {
+        Route::get('/asistente', [AsistenteController::class, 'index'])->name('asistente.index');
+        Route::post('/asistente/mensajes', [AsistenteController::class, 'enviar'])->middleware('throttle:ia')->name('asistente.enviar');
+    });
+    Route::middleware("can:modulo,'logs'")->group(function () {
+        Route::get('/logs', [AnalisisLogController::class, 'index'])->name('logs.index');
+        Route::post('/logs/analizar', [AnalisisLogController::class, 'analizar'])->middleware('throttle:ia')->name('logs.analizar');
+    });
+
+    // Módulos de la fase 6 (solo listado por ahora)
     $modulos = [
-        'conocimiento' => ConocimientoController::class,
-        'asistente' => AsistenteController::class,
-        'logs' => AnalisisLogController::class,
         'notificaciones' => NotificacionController::class,
         'reportes' => ReporteController::class,
         'configuracion' => ConfiguracionController::class,

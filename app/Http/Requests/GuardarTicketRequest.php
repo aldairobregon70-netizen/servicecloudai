@@ -52,6 +52,7 @@ class GuardarTicketRequest extends FormularioTenant
             $reglas['solicitante_id'] = $esSolicitante ? ['prohibited'] : ['nullable', 'integer', $this->existeEnOrganizacion('usuarios')];
             $reglas['origen'] = $esSolicitante ? ['prohibited'] : ['nullable', Rule::in(OrigenTicket::valores())];
             $reglas['adjunto'] = ['nullable', 'file', 'max:10240', 'mimes:'.self::MIMES_ADJUNTO];
+            $reglas['analisis_id'] = ['nullable', 'integer', $this->existeEnOrganizacion('analisis_logs_ia')];
         }
 
         return $reglas;

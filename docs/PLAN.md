@@ -9,7 +9,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - [x] **Fase 2 — Base de la app:** CSS del mockup, layout, login, componentes Blade, menú por roles, JS base.
 - [x] **Fase 3 — Maestros:** Organizaciones, Usuarios, Activos, Servicios, Contratos (CRUD completo).
 - [x] **Fase 4 — Operación:** Tickets + SLA, Asignaciones (kanban), Incidencias, Problemas, Solicitudes, SLA, notificaciones, scheduler.
-- [ ] **Fase 5 — IA:** drivers simulado/Gemini, base de conocimiento + RAG, clasificación, asistente, análisis de logs.
+- [x] **Fase 5 — IA:** drivers simulado/Gemini, base de conocimiento + RAG, clasificación, asistente, análisis de logs.
 - [ ] **Fase 6 — Dashboard y reportes:** KPIs y gráficos reales, notificaciones, reportes CSV, configuración, búsqueda global, auditoría.
 - [ ] **Fase 7 — Cierre y nube:** QA, rendimiento, imagen de producción, API, k6, documentación de despliegue.
 
@@ -71,6 +71,19 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - Comando `sla:revisar` (cada 5 min, sin duplicar avisos) y servicio `scheduler` en `compose.yaml`.
 - Tests: `TicketsTest`, `AsignacionesSlaTest`, `IncidenciasProblemasSolicitudesTest`. 98 tests en verde. Flujo del ticket probado en Chrome headless (alta en modal, nota, asignación, cambio de estado, error de solución en línea).
 
+### Fase 5 (16/10/2026)
+
+- Capa `app/Services/AI`: interfaz `ProveedorIA`, `SolicitudIA` (prompt de texto + datos estructurados solo para el motor local), `RespuestaIA`, `GestorIA` (elige driver por `AI_DRIVER`, cae al simulado si Gemini falla y avisa con toast), drivers `Simulado` (`Nlp/MotorReglas` + `Nlp/Texto`: palabras clave ponderadas, matriz impacto × urgencia ajustada por severidad, embeddings de bolsa de palabras de 384 dimensiones) y `Gemini` (REST `generateContent` / `batchEmbedContents`, clave en cabecera, correos y teléfonos enmascarados).
+- `ClasificadorTickets`: al crear un ticket (si `clasificacion_automatica`) guarda `clasificaciones_ia` + `recomendaciones_ia` con 3 fuentes RAG; si `prioridad_automatica` aplica prioridad y categoría. Botones "Analizar/Reanalizar con IA", "Aceptar"/"Rechazar" y "Aplicar recomendación" en el detalle.
+- `IndexadorConocimiento` (fragmentos de ~800 caracteres con solapamiento de 150, `embedding_json`, `token_count`) + comando `php artisan ia:indexar [--forzar]`; se indexa al publicar y se desindexa al archivar/eliminar.
+- `RecomendadorRag`: full-text PostgreSQL (OR de términos, índice GIN) + coseno sobre fragmentos del mismo modelo de embedding; respeta organización y visibilidad.
+- **Base de conocimiento** idéntica a `renderKnowledge` (chips, búsqueda, "Buscar con IA", tarjetas), detalle con contador de vistas y estado de indexación, CRUD en modal con etiquetas; técnicos crean borradores.
+- **Asistente IA** idéntico a `renderAssistant`: conversación persistida, acciones rápidas, reconoce `TKT-…` (solo tickets visibles), preguntas de SLA, RAG; chips con fragmentos reales; Markdown escapado.
+- **Análisis de Logs** idéntico a `renderLogs` con el mismo ejemplo: parser `fecha NIVEL [origen] mensaje`, patrones (timeout, pool > 80 %, latencia > 3000 ms, cola, reintentos, caché, memoria), guarda `logs_tecnicos` + `analisis_logs_ia` + detalle, "Crear ticket desde análisis" prellenado y vinculado.
+- Rate limit `throttle:ia` (20/min por usuario) en asistente, análisis de logs y reanálisis.
+- Seeder: indexa la base, genera la IA de TKT-2026-00452 con el pipeline real y siembra 2 análisis de logs.
+- Tests deterministas `IaTest` (21): caso de ejemplo de punta a punta, RAG, logs, fallback de Gemini con `Http::fake`, anonimización, asistente y aislamiento, conocimiento. 119 tests en verde. Evidencia en `docs/evidencias/`.
+
 ## Decisiones
 
 - **Sin Laravel Boost.** `boost:install` reescribe `AGENTS.md`/`CLAUDE.md`; el kit de `.agents/` ya cumple esa función.
@@ -101,6 +114,11 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - **Kanban**: "Resuelto" muestra los resueltos de los últimos 7 días; mover a "Asignado"/"En progreso" sin técnico solo lo permite el propio técnico (se lo autoasigna); el supervisor debe asignar primero o usar "Autoasignar con IA".
 - **Solicitudes** no crean un ticket automáticamente al aprobarse; el técnico las atiende desde el propio módulo (iniciar/completar).
 - La pantalla de SLA agrega (extensión) un selector de política y una tabla de políticas con CRUD, porque el mockup solo simulaba "Nueva política SLA".
+- **Privacidad IA**: a un proveedor externo solo viaja texto técnico (título, descripción, categoría, SLA, fragmentos de logs y de artículos); nunca nombres, correos ni contraseñas. Los datos estructurados (`SolicitudIA::datos`) solo los usa el motor local.
+- **Asistente del Admin SaaS sin historial**: la FK compuesta `conversaciones_ia(organizacion_id, usuario_id)` exige que el usuario pertenezca a la organización; el ADMIN_SAAS no tiene organización, así que su conversación no se persiste.
+- **Relevancia RAG mostrada** = puntaje híbrido (65 % coseno + 35 % ts_rank) normalizado respecto del mejor resultado (0,55–0,99), para que sea legible como en el mockup.
+- Si se cambia de proveedor de embeddings, ejecutar `php artisan ia:indexar --forzar` (solo se comparan vectores del mismo modelo; mientras tanto la búsqueda usa full-text).
+- Eventos del analizador: el uso del pool se muestra como INFO (igual que el mockup) aunque supere el 80 %; el umbral sí eleva la severidad del análisis.
 - Rutas de ticket y artículo usan `codigo` como clave (`/tickets/TKT-2026-00452`). Un registro de otra organización devuelve 404 (el scope lo oculta) en lugar de 403, para no revelar su existencia.
 
 ## Usuarios demo
@@ -143,6 +161,7 @@ docker compose exec -T -u root app ./vendor/bin/pint   # formato PSR-12
 docker compose exec -T -u root app sh -c "composer require paquete/nombre && chown -R www-data:www-data vendor"
 docker compose exec -T app php artisan contratos:actualizar-estados
 docker compose exec -T app php artisan sla:revisar
+docker compose exec -T app php artisan ia:indexar --forzar          # reindexar la base de conocimiento
 docker compose up -d scheduler                          # programador (sla:revisar cada 5 min)
 docker compose exec -T -u root app chmod -R a+rwX storage bootstrap/cache   # si aparece error de permisos
 docker compose exec -T pgsql psql -U servicecloud -d servicecloud_ai
@@ -161,7 +180,5 @@ docker run --rm --network servicecloudai_default -v "$PWD:/work:ro" -v "$PWD/cap
 
 ## Pendiente
 
-- Fase 5 en adelante.
-- Logs técnicos y análisis de logs de ejemplo: se siembran en la fase 5 junto con el analizador.
-- Indexación RAG (`documentos_rag`, `fragmentos_rag`): fase 5 (`php artisan ia:indexar`).
+- Fase 6 en adelante.
 - Fase 7: confirmar con el equipo en qué nubes se desplegará.

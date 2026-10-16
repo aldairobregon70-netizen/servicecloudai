@@ -518,6 +518,10 @@ a.nav-item.active,a.nav-item:hover{color:#fff}
 /* Cerrar sesión desde el sidebar: solo en móvil, donde el header oculta el bloque de usuario */
 .sidebar-logout{display:none;margin-top:8px}
 @media(max-width:760px){.sidebar-logout{display:flex}}
+/* Markdown del asistente dentro de las burbujas */
+.bubble p{margin:0 0 8px}.bubble p:last-child{margin-bottom:0}
+.bubble ul,.bubble ol{margin:4px 0 8px;padding-left:18px}.bubble li{margin:2px 0}
+.bubble strong{color:#fff}.bubble code{font-family:"SFMono-Regular",Consolas,monospace;font-size:10px;background:rgba(2,11,58,.5);padding:1px 4px;border-radius:5px}
 /* Corrección del mockup: en ≤1024px la capa oscura solo debe verse con el menú abierto
    (el mockup la mostraba siempre y dejaba la pantalla borrosa en móvil). */
 @media(max-width:1024px){

@@ -26,6 +26,10 @@
     <x-form-relacion nombre="solicitante_id" etiqueta="Solicitante" :registros="$solicitantes" vacio="Yo mismo" />
     <x-form-field nombre="origen" etiqueta="Canal" :opciones="App\Enums\OrigenTicket::opciones()" valor="portal" />
   @endunless
+  @if ($analisisId ?? null)
+    <input type="hidden" name="analisis_id" value="{{ $analisisId }}" />
+    <p class="form-hint form-group full">Se vinculará al análisis de logs #{{ $analisisId }}.</p>
+  @endif
   @unless ($ticket->exists)
     <x-form-field nombre="adjunto" etiqueta="Adjunto (opcional, máx. 10 MB)" tipo="file" completo />
   @endunless

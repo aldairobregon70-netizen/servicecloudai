@@ -16,6 +16,7 @@ use App\Models\TicketAsignacion;
 use App\Models\TicketComentario;
 use App\Models\TicketHistorial;
 use App\Models\Usuario;
+use App\Services\AI\ClasificadorTickets;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -77,7 +78,10 @@ class TicketService
             $this->notificaciones->notificar($ticket->tecnico_id, 'Ticket asignado', "Se te asignó {$ticket->codigo}: {$ticket->titulo}", TipoNotificacion::Asignacion, $ticket);
         }
 
-        return $ticket;
+        // Clasificación IA automática (si la organización la tiene activa). Nunca impide crear el ticket.
+        app(ClasificadorTickets::class)->alCrearTicket($ticket, $autor);
+
+        return $ticket->refresh();
     }
 
     /** TKT-AAAA-00001, correlativo por año (único en toda la plataforma). */
