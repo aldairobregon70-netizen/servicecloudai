@@ -126,4 +126,18 @@ return [
     ],
 
     'paginacion' => 15,
+
+    /*
+    | API JSON (pruebas de rendimiento): límites por minuto. Súbelos solo para las pruebas de carga.
+    */
+    'api' => [
+        'limite_por_minuto' => (int) env('API_RATE_LIMIT', 600),
+        'limite_login_por_minuto' => (int) env('API_LOGIN_RATE_LIMIT', 30),
+    ],
+
+    /*
+    | Disco para adjuntos de tickets: local (storage/app/private) o s3 (compatible: AWS S3, MinIO,
+    | GCS en modo interoperable, Azure con gateway S3). En varias instancias usar s3.
+    */
+    'adjuntos_disco' => env('ADJUNTOS_DISK', 'local'),
 ];

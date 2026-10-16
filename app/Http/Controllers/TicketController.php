@@ -193,9 +193,9 @@ class TicketController extends Controller
     public function descargarAdjunto(Ticket $ticket, TicketAdjunto $adjunto): StreamedResponse
     {
         $this->authorize('view', $ticket);
-        abort_unless($adjunto->ticket_id === $ticket->id && Storage::disk('local')->exists($adjunto->ruta_storage), 404);
+        abort_unless($adjunto->ticket_id === $ticket->id && Storage::disk(config('servicecloud.adjuntos_disco'))->exists($adjunto->ruta_storage), 404);
 
-        return Storage::disk('local')->download($adjunto->ruta_storage, $adjunto->nombre_original);
+        return Storage::disk(config('servicecloud.adjuntos_disco'))->download($adjunto->ruta_storage, $adjunto->nombre_original);
     }
 
     private function consulta(Request $request): Builder

@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -55,7 +56,7 @@ class IncidenciaController extends Controller
     public function store(GuardarIncidenciaRequest $request): JsonResponse|RedirectResponse
     {
         $datos = $this->conPrioridad($request->datosConOrganizacion());
-        $incidencia = Incidencia::create($datos + ['codigo' => Codigos::siguiente(Incidencia::class, 'INC', 4), 'inicio_en' => now()]);
+        $incidencia = DB::transaction(fn () => Incidencia::create($datos + ['codigo' => Codigos::siguiente(Incidencia::class, 'INC', 4), 'inicio_en' => now()]));
 
         return $this->guardado(route('incidencias.index'), ['Incidencia creada', "{$incidencia->codigo} · prioridad {$incidencia->prioridad->label()}."]);
     }

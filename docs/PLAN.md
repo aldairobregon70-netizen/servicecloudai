@@ -11,7 +11,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - [x] **Fase 4 — Operación:** Tickets + SLA, Asignaciones (kanban), Incidencias, Problemas, Solicitudes, SLA, notificaciones, scheduler.
 - [x] **Fase 5 — IA:** drivers simulado/Gemini, base de conocimiento + RAG, clasificación, asistente, análisis de logs.
 - [x] **Fase 6 — Dashboard y reportes:** KPIs y gráficos reales, notificaciones, reportes CSV, configuración, búsqueda global, auditoría.
-- [ ] **Fase 7 — Cierre y nube:** QA, rendimiento, imagen de producción, API, k6, documentación de despliegue.
+- [x] **Fase 7 — Cierre y nube:** QA, rendimiento, imagen de producción, API, k6, documentación de despliegue.
 
 ## Hecho
 
@@ -94,6 +94,18 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - Búsqueda global (desde la fase 2): tickets, usuarios y activos, máx. 8, respeta tenant y rol.
 - Tests: `DashboardReportesConfiguracionTest` (16). 135 tests en verde.
 
+### Fase 7 (16/10/2026)
+
+- **QA**: 119 rutas con nombre y bajo autenticación (salvo login, token y `/up`); único `{!! !!}` justificado (Markdown escapado del asistente); sin secretos en el código; CSRF en todos los `fetch`; `AislamientoQaTest` (NovaTech no ve un ticket de AndesMarket por URL, búsqueda, CSV, otros módulos, API ni asistente); `RendimientoTest` (listados ≤ 15 consultas, sin N+1).
+- **Rendimiento BD**: `EXPLAIN` confirma que se usan `idx_tickets_org_estado`, `idx_tickets_tecnico` y el GIN `idx_articulos_busqueda_fts` (con los datos demo PostgreSQL prefiere un recorrido secuencial, correcto para tablas pequeñas).
+- **Error de concurrencia corregido** (encontrado con k6): códigos correlativos duplicados (`TKT-AAAA-#####`, etc.) al crear en paralelo → bloqueo asesor `pg_advisory_xact_lock` dentro de la transacción del alta (`Codigos::bloquear()`).
+- **Imagen de producción**: stage `production` con valores por defecto 12-factor (`APP_ENV=production`, `LOG_CHANNEL=stderr`, sesión/caché/cola en BD); probada con `docker run` contra una base vacía: migra sola, cachea config/rutas/vistas, siembra con `db:seed --force`, responde `/up` y todas las pantallas (40–90 ms).
+- **Configuración por entorno**: `TRUSTED_PROXIES` (balanceadores), `ADJUNTOS_DISK` (local o S3 compatible; se agregó `league/flysystem-aws-s3-v3`), `API_RATE_LIMIT`, `API_LOGIN_RATE_LIMIT`, `SANCTUM_EXPIRATION`, `GEMINI_URL_BASE`, `GEMINI_TIMEOUT`; todo documentado en `.env.example`.
+- **API JSON v1** (Laravel Sanctum): token, tickets (listar, ver, crear, clasificar), clasificación de texto sin persistir; `docs/API.md`. Tests `ApiTest`.
+- **Prueba de carga** `docs/pruebas/carga.js` (k6 en Docker: login web, dashboard, tickets, API, creación, IA). Resultado local con la imagen de producción, 20 VUs, 30 s: 2.323 peticiones, 0 % errores, p95 web 72 ms, API 190 ms, IA 129 ms.
+- **Documentación**: `README.md` en español, `docs/DESPLIEGUE.md` (pasos genéricos + notas AWS, Azure y Google Cloud), `docs/evidencias/`.
+- 145 tests en verde.
+
 ## Decisiones
 
 - **Sin Laravel Boost.** `boost:install` reescribe `AGENTS.md`/`CLAUDE.md`; el kit de `.agents/` ya cumple esa función.
@@ -132,6 +144,9 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - **Configuración por rol**: ADMIN_ORGANIZACION configura la IA y el SLA por defecto de su organización; supervisor, técnico y solicitante solo sus preferencias de notificación (la matriz marcaba "—" para el supervisor, pero las preferencias personales aplican a todos).
 - **"Tema oscuro SaaS"** se muestra fijo (activo y deshabilitado): no hay columna para persistirlo y la identidad oscura es la única del mockup. Se agrega "Notificaciones en la app" (`in_app_activo`), que sí existe en el esquema.
 - **Auditoría solo con usuario autenticado**: seeders, comandos y el programador no generan registros.
+- **Tabla `personal_access_tokens`** (Sanctum) agregada con una migración propia de Laravel, igual que `sessions`/`cache`/`jobs`: no modifica las 45 tablas del esquema.
+- **Cambio en `Dockerfile`** (stage `production`): variables por defecto para la nube. No cambia el comportamiento en desarrollo.
+- **Despliegue**: `docs/DESPLIEGUE.md` trae notas para AWS, Azure y Google Cloud porque el plan no indicaba qué nubes usará el equipo; ajustar cuando se definan.
 - Rutas de ticket y artículo usan `codigo` como clave (`/tickets/TKT-2026-00452`). Un registro de otra organización devuelve 404 (el scope lo oculta) en lugar de 403, para no revelar su existencia.
 
 ## Usuarios demo
@@ -176,6 +191,8 @@ docker compose exec -T app php artisan contratos:actualizar-estados
 docker compose exec -T app php artisan sla:revisar
 docker compose exec -T app php artisan ia:indexar --forzar          # reindexar la base de conocimiento
 docker compose up -d scheduler                          # programador (sla:revisar cada 5 min)
+docker build --target production -t servicecloudai:prod .   # imagen para la nube (docs/DESPLIEGUE.md)
+docker run --rm -i -e BASE_URL=http://host.docker.internal:8000 grafana/k6 run - < docs/pruebas/carga.js   # carga
 docker compose exec -T -u root app chmod -R a+rwX storage bootstrap/cache   # si aparece error de permisos
 docker compose exec -T pgsql psql -U servicecloud -d servicecloud_ai
 docker compose logs app --tail=100
@@ -193,5 +210,6 @@ docker run --rm --network servicecloudai_default -v "$PWD:/work:ro" -v "$PWD/cap
 
 ## Pendiente
 
-- Fase 7.
-- Fase 7: confirmar con el equipo en qué nubes se desplegará.
+- Confirmar con el equipo en qué nubes se desplegará y completar `docs/DESPLIEGUE.md` con los pasos exactos (registro, base administrada, secretos).
+- Si se activa Gemini: definir `GEMINI_MODELO_TEXTO` / `GEMINI_MODELO_EMBEDDING`, cargar `GEMINI_API_KEY` y ejecutar `php artisan ia:indexar --forzar`.
+- Ejecutar `docs/pruebas/carga.js` en cada nube con el mismo número de VUs y registrar resultados (p95, errores, req/s, tamaño de instancia y de base).

@@ -10,7 +10,7 @@ class EsquemaTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const TABLAS_LARAVEL = ['migrations', 'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs'];
+    private const TABLAS_LARAVEL = ['migrations', 'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'personal_access_tokens'];
 
     public function test_el_esquema_crea_las_45_tablas(): void
     {

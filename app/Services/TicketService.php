@@ -17,6 +17,7 @@ use App\Models\TicketComentario;
 use App\Models\TicketHistorial;
 use App\Models\Usuario;
 use App\Services\AI\ClasificadorTickets;
+use App\Support\Codigos;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -84,9 +85,14 @@ class TicketService
         return $ticket->refresh();
     }
 
-    /** TKT-AAAA-00001, correlativo por año (único en toda la plataforma). */
+    /**
+     * TKT-AAAA-00001, correlativo por año (único en toda la plataforma).
+     * Debe llamarse dentro de la transacción del alta: el bloqueo asesor evita que dos
+     * peticiones simultáneas obtengan el mismo número (detectado en la prueba de carga).
+     */
     public function siguienteCodigo(): string
     {
+        Codigos::bloquear('tickets');
         $prefijo = 'TKT-'.now()->format('Y').'-';
         $maximo = Ticket::sinFiltroOrganizacion()->where('codigo', 'like', $prefijo.'%')
             ->selectRaw('max(substring(codigo from ?::int)::int) as maximo', [strlen($prefijo) + 1])
@@ -254,7 +260,7 @@ class TicketService
     public function adjuntar(Ticket $ticket, UploadedFile $archivo, Usuario $usuario): TicketAdjunto
     {
         $nombre = Str::uuid().'.'.($archivo->guessExtension() ?: $archivo->getClientOriginalExtension());
-        $ruta = $archivo->storeAs("tickets/{$ticket->id}", $nombre, 'local');
+        $ruta = $archivo->storeAs("tickets/{$ticket->id}", $nombre, config('servicecloud.adjuntos_disco'));
 
         return TicketAdjunto::create([
             'ticket_id' => $ticket->id, 'subido_por_id' => $usuario->id,

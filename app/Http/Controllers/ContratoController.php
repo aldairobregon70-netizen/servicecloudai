@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -54,7 +55,7 @@ class ContratoController extends Controller
     public function store(GuardarContratoRequest $request): JsonResponse|RedirectResponse
     {
         $datos = $this->conEstadoCalculado($request->datosConOrganizacion());
-        $contrato = Contrato::create($datos + ['codigo' => Codigos::siguiente(Contrato::class, 'CTR', 3), 'moneda' => 'PEN']);
+        $contrato = DB::transaction(fn () => Contrato::create($datos + ['codigo' => Codigos::siguiente(Contrato::class, 'CTR', 3), 'moneda' => 'PEN']));
 
         return $this->guardado(route('contratos.index'), ['Registro creado', "Contratos: {$contrato->codigo} · {$contrato->nombre} fue creado."]);
     }

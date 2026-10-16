@@ -47,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('ver-auditoria', fn (Usuario $usuario) => $usuario->esAdminSaas() || $usuario->tieneRol(Rol::AdminOrganizacion));
 
         // El login limita sus intentos en LoginController (5 por minuto por correo + IP).
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(config('servicecloud.api.limite_por_minuto'))->by($request->user()?->id ?: $request->ip()));
+        RateLimiter::for('api-login', fn (Request $request) => Limit::perMinute(config('servicecloud.api.limite_login_por_minuto'))->by($request->ip()));
         RateLimiter::for('ia', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
         });

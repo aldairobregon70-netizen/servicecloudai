@@ -31,8 +31,18 @@ USER www-data
 ############################################
 FROM base AS production
 
+# Valores por defecto para la nube (12-factor): todo se puede sobrescribir con variables de entorno.
+# AUTORUN ejecuta al arrancar: migrate --force, storage:link y config/route/view/event:cache.
 ENV PHP_OPCACHE_ENABLE=1 \
-    AUTORUN_ENABLED=true
+    AUTORUN_ENABLED=true \
+    APP_ENV=production \
+    APP_DEBUG=false \
+    LOG_CHANNEL=stderr \
+    LOG_LEVEL=info \
+    SESSION_DRIVER=database \
+    CACHE_STORE=database \
+    QUEUE_CONNECTION=database \
+    AI_DRIVER=simulado
 
 COPY --chown=www-data:www-data . /var/www/html
 

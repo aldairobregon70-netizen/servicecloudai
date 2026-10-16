@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 class Usuario extends Authenticatable
 {
-    use Notifiable, PerteneceAOrganizacion;
+    use HasApiTokens, Notifiable, PerteneceAOrganizacion;
 
     const CREATED_AT = 'creado_en';
 

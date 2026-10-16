@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -64,7 +65,7 @@ class SolicitudController extends Controller
     {
         $datos = $request->datosConOrganizacion();
         $datos['solicitante_id'] ??= $request->user()->id;
-        $solicitud = Solicitud::create($datos + ['codigo' => Codigos::siguiente(Solicitud::class, 'REQ', 4), 'estado' => EstadoSolicitud::PendienteAprobacion]);
+        $solicitud = DB::transaction(fn () => Solicitud::create($datos + ['codigo' => Codigos::siguiente(Solicitud::class, 'REQ', 4), 'estado' => EstadoSolicitud::PendienteAprobacion]));
 
         foreach ($this->notificaciones->gestoresDe($solicitud->organizacion_id) as $gestor) {
             $this->notificaciones->notificar($gestor, 'Solicitud pendiente de aprobación', "{$solicitud->codigo}: {$solicitud->titulo}", TipoNotificacion::Sistema);
