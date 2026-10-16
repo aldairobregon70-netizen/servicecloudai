@@ -2,12 +2,43 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notificacion;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/** Centro de notificaciones (renderNotifications): cada usuario solo ve las suyas. */
 class NotificacionController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('modulos.pendiente', ['clave' => 'notificaciones', 'fase' => 6]);
+        $notificaciones = Notificacion::de($request->user())
+            ->with('ticket:id,codigo')
+            ->when($request->query('filtro') === 'no_leidas', fn ($q) => $q->noLeidas())
+            ->latest('creado_en')->latest('id')
+            ->paginate(20)->withQueryString();
+
+        return view('notificaciones.index', compact('notificaciones'));
+    }
+
+    /** Abre una notificación: la marca como leída y lleva al ticket relacionado si lo hay. */
+    public function abrir(Request $request, Notificacion $notificacion): RedirectResponse
+    {
+        abort_unless($notificacion->usuario_id === $request->user()->id, 404);
+        if (! $notificacion->leida_en) {
+            $notificacion->update(['leida_en' => now()]);
+        }
+        $ticket = $notificacion->ticket;
+
+        return $ticket && $request->user()->can('view', $ticket)
+            ? redirect()->route('tickets.show', $ticket)
+            : redirect()->route('notificaciones.index');
+    }
+
+    public function marcarTodas(Request $request): RedirectResponse
+    {
+        $cantidad = Notificacion::de($request->user())->noLeidas()->update(['leida_en' => now()]);
+
+        return back()->with('ok', ['Notificaciones actualizadas', $cantidad > 0 ? "{$cantidad} marcadas como leídas." : 'Todas fueron marcadas como leídas.']);
     }
 }

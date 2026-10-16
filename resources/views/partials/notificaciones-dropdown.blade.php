@@ -1,6 +1,6 @@
 <div class="profile-drop-head"><b>Notificaciones</b><span>{{ $notificacionesNoLeidas }} sin leer</span></div>
 @forelse ($notificacionesHeader as $notificacion)
-  <a class="notif-item {{ $notificacion->leida_en ? '' : 'unread' }}" href="{{ route('notificaciones.index') }}">
+  <a class="notif-item {{ $notificacion->leida_en ? '' : 'unread' }}" href="{{ route('notificaciones.abrir', $notificacion) }}">
     <div class="notif-dot" style="{{ $notificacion->leida_en ? 'opacity:.2' : '' }}"></div>
     <div class="result-text"><b>{{ $notificacion->titulo }}</b><span>{{ $notificacion->mensaje }} · {{ \App\Support\Formato::relativo($notificacion->creado_en) }}</span></div>
   </a>

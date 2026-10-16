@@ -10,7 +10,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - [x] **Fase 3 — Maestros:** Organizaciones, Usuarios, Activos, Servicios, Contratos (CRUD completo).
 - [x] **Fase 4 — Operación:** Tickets + SLA, Asignaciones (kanban), Incidencias, Problemas, Solicitudes, SLA, notificaciones, scheduler.
 - [x] **Fase 5 — IA:** drivers simulado/Gemini, base de conocimiento + RAG, clasificación, asistente, análisis de logs.
-- [ ] **Fase 6 — Dashboard y reportes:** KPIs y gráficos reales, notificaciones, reportes CSV, configuración, búsqueda global, auditoría.
+- [x] **Fase 6 — Dashboard y reportes:** KPIs y gráficos reales, notificaciones, reportes CSV, configuración, búsqueda global, auditoría.
 - [ ] **Fase 7 — Cierre y nube:** QA, rendimiento, imagen de producción, API, k6, documentación de despliegue.
 
 ## Hecho
@@ -84,6 +84,16 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - Seeder: indexa la base, genera la IA de TKT-2026-00452 con el pipeline real y siembra 2 análisis de logs.
 - Tests deterministas `IaTest` (21): caso de ejemplo de punta a punta, RAG, logs, fallback de Gemini con `Http::fake`, anonimización, asistente y aislamiento, conocimiento. 119 tests en verde. Evidencia en `docs/evidencias/`.
 
+### Fase 6 (16/10/2026)
+
+- **Dashboard**: datos reales (desde la fase 2) con caché de 60 s por alcance: `dashboard:global` (Admin SaaS), `dashboard:org:{id}` (admin de organización y supervisor), `dashboard:usuario:{id}` (técnico y solicitante).
+- **Notificaciones**: centro idéntico a `renderNotifications` con filtro "Solo no leídas", paginación, "Marcar todo como leído"; abrir una notificación la marca leída y lleva al ticket; punto rojo de la campana solo con no leídas.
+- **Reportes**: las 6 tarjetas del mockup descargan CSV reales (`ReporteService`): mesa de ayuda, cumplimiento SLA, efectividad de IA, disponibilidad de servicios (estimada por incidencias alta/crítica), productividad técnica e incidencias críticas; filtro de período (por defecto 30 días, máx. 1 año); respetan organización y rol.
+- **Configuración**: interruptores que guardan `configuracion_organizacion` (clasificación automática, priorización, RAG, política SLA por defecto) y `preferencias_notificaciones` (correo, push, en la app); ADMIN_SAAS elige la organización y ve los planes SaaS.
+- **Auditoría**: `AuditoriaObserver` en organizaciones, usuarios, contratos, políticas/reglas SLA y tickets (crear, actualizar, eliminar; antes/después; IP; nunca el hash de la contraseña) y vista con filtros en Configuración → Auditoría (ADMIN_SAAS y ADMIN_ORGANIZACION).
+- Búsqueda global (desde la fase 2): tickets, usuarios y activos, máx. 8, respeta tenant y rol.
+- Tests: `DashboardReportesConfiguracionTest` (16). 135 tests en verde.
+
 ## Decisiones
 
 - **Sin Laravel Boost.** `boost:install` reescribe `AGENTS.md`/`CLAUDE.md`; el kit de `.agents/` ya cumple esa función.
@@ -119,6 +129,9 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - **Relevancia RAG mostrada** = puntaje híbrido (65 % coseno + 35 % ts_rank) normalizado respecto del mejor resultado (0,55–0,99), para que sea legible como en el mockup.
 - Si se cambia de proveedor de embeddings, ejecutar `php artisan ia:indexar --forzar` (solo se comparan vectores del mismo modelo; mientras tanto la búsqueda usa full-text).
 - Eventos del analizador: el uso del pool se muestra como INFO (igual que el mockup) aunque supere el 80 %; el umbral sí eleva la severidad del análisis.
+- **Configuración por rol**: ADMIN_ORGANIZACION configura la IA y el SLA por defecto de su organización; supervisor, técnico y solicitante solo sus preferencias de notificación (la matriz marcaba "—" para el supervisor, pero las preferencias personales aplican a todos).
+- **"Tema oscuro SaaS"** se muestra fijo (activo y deshabilitado): no hay columna para persistirlo y la identidad oscura es la única del mockup. Se agrega "Notificaciones en la app" (`in_app_activo`), que sí existe en el esquema.
+- **Auditoría solo con usuario autenticado**: seeders, comandos y el programador no generan registros.
 - Rutas de ticket y artículo usan `codigo` como clave (`/tickets/TKT-2026-00452`). Un registro de otra organización devuelve 404 (el scope lo oculta) en lugar de 403, para no revelar su existencia.
 
 ## Usuarios demo
@@ -180,5 +193,5 @@ docker run --rm --network servicecloudai_default -v "$PWD:/work:ro" -v "$PWD/cap
 
 ## Pendiente
 
-- Fase 6 en adelante.
+- Fase 7.
 - Fase 7: confirmar con el equipo en qué nubes se desplegará.

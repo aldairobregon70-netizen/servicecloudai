@@ -2,8 +2,15 @@
 
 namespace App\Providers;
 
+use App\Enums\Rol;
+use App\Models\Contrato;
 use App\Models\Notificacion;
+use App\Models\Organizacion;
+use App\Models\PoliticaSla;
+use App\Models\ReglaSla;
+use App\Models\Ticket;
 use App\Models\Usuario;
+use App\Observers\AuditoriaObserver;
 use App\Services\AI\GestorIA;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -26,10 +33,18 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Carbon::setLocale('es');
+
+        // Auditoría de entidades sensibles (regla 03)
+        foreach ([Organizacion::class, Usuario::class, Contrato::class, PoliticaSla::class, ReglaSla::class, Ticket::class] as $modelo) {
+            $modelo::observe(AuditoriaObserver::class);
+        }
         Paginator::defaultView('partials.paginacion');
 
         // Acceso por módulo del menú: middleware can:modulo,<clave> y @can('modulo', '<clave>')
         Gate::define('modulo', fn (Usuario $usuario, string $clave) => $usuario->puedeVerModulo($clave));
+        // Configuración de IA/SLA de la organización y auditoría (regla 03)
+        Gate::define('configurar-organizacion', fn (Usuario $usuario) => $usuario->esAdminSaas() || $usuario->tieneRol(Rol::AdminOrganizacion));
+        Gate::define('ver-auditoria', fn (Usuario $usuario) => $usuario->esAdminSaas() || $usuario->tieneRol(Rol::AdminOrganizacion));
 
         // El login limita sus intentos en LoginController (5 por minuto por correo + IP).
         RateLimiter::for('ia', function (Request $request) {

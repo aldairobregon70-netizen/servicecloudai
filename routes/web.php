@@ -99,15 +99,23 @@ Route::middleware('auth')->group(function () {
         Route::post('/logs/analizar', [AnalisisLogController::class, 'analizar'])->middleware('throttle:ia')->name('logs.analizar');
     });
 
-    // Módulos de la fase 6 (solo listado por ahora)
-    $modulos = [
-        'notificaciones' => NotificacionController::class,
-        'reportes' => ReporteController::class,
-        'configuracion' => ConfiguracionController::class,
-    ];
-    foreach ($modulos as $clave => $controlador) {
-        Route::middleware("can:modulo,'$clave'")->group(function () use ($clave, $controlador) {
-            Route::get("/$clave", [$controlador, 'index'])->name("$clave.index");
-        });
-    }
+    // Notificaciones (cada usuario las suyas)
+    Route::middleware("can:modulo,'notificaciones'")->controller(NotificacionController::class)->group(function () {
+        Route::get('/notificaciones', 'index')->name('notificaciones.index');
+        Route::get('/notificaciones/{notificacion}/abrir', 'abrir')->name('notificaciones.abrir');
+        Route::post('/notificaciones/marcar-todas', 'marcarTodas')->name('notificaciones.marcar-todas');
+    });
+
+    // Reportes CSV
+    Route::middleware("can:modulo,'reportes'")->controller(ReporteController::class)->group(function () {
+        Route::get('/reportes', 'index')->name('reportes.index');
+        Route::get('/reportes/descargar', 'descargar')->name('reportes.descargar');
+    });
+
+    // Configuración y auditoría
+    Route::middleware("can:modulo,'configuracion'")->controller(ConfiguracionController::class)->group(function () {
+        Route::get('/configuracion', 'index')->name('configuracion.index');
+        Route::post('/configuracion', 'guardar')->name('configuracion.guardar');
+        Route::get('/configuracion/auditoria', 'auditoria')->name('configuracion.auditoria');
+    });
 });
