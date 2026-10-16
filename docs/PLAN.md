@@ -5,7 +5,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 ## Fases
 
 - [x] **Fase 0 — Entorno:** contenedores, `.env` y `phpunit.xml` para PostgreSQL, este plan.
-- [ ] **Fase 1 — Base de datos:** migración del esquema SQL, enums, scope multi-tenant, modelos, seeders demo.
+- [x] **Fase 1 — Base de datos:** migración del esquema SQL, enums, scope multi-tenant, modelos, seeders demo.
 - [ ] **Fase 2 — Base de la app:** CSS del mockup, layout, login, componentes Blade, menú por roles, JS base.
 - [ ] **Fase 3 — Maestros:** Organizaciones, Usuarios, Activos, Servicios, Contratos (CRUD completo).
 - [ ] **Fase 4 — Operación:** Tickets + SLA, Asignaciones (kanban), Incidencias, Problemas, Solicitudes, SLA, notificaciones, scheduler.
@@ -24,6 +24,16 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - Eliminado `database/database.sqlite`.
 - `CLAUDE.md` reemplazado por un puntero a `AGENTS.md` y `.agents/`.
 
+### Fase 1 (16/10/2026)
+
+- Migración `2026_01_01_000100_crear_esquema_servicecloud` carga el SQL tal cual (45 tablas). La migración por defecto de Laravel solo crea `sessions` (+ cache y jobs).
+- 26 enums en `app/Enums` (label en español + color de badge del mockup + `valores()`/`opciones()`); `Prioridad::desdeMatriz()` implementa impacto × urgencia; enum `Rol` con los códigos de la tabla `roles`.
+- Trait `PerteneceAOrganizacion`: global scope por la organización del usuario autenticado (ADMIN_SAAS y consola sin filtro) y asignación forzada de `organizacion_id` al crear. Lectura de registros globales (`organizacion_id NULL`) en políticas SLA, artículos, documentos RAG y notificaciones.
+- 36 modelos con `$table`, `$fillable`, casts (enums, JSONB, fechas) y relaciones; `Usuario` autenticable con `password_hash`.
+- `SlaService` básico (suma de minutos 24x7 y laboral L-V 08:00-18:00); se completa en la fase 4.
+- Seeders: `PlataformaSeeder` (30 permisos por rol, 7 modelos IA, plantillas SLA Gold/Silver/Bronze, límites de planes), `DemoSeeder` (5 organizaciones, 21 usuarios, equipos, categorías, SLA por organización, 5 contratos, 11 servicios, 10 activos, 55 tickets con SLA/historial/asignaciones, 42 clasificaciones IA, incidencias, problemas, solicitudes, notificaciones), `ConocimientoSeeder` (8 artículos, 6 públicos con contenido extenso para RAG).
+- Tests: `EsquemaTest`, `ModelosTest` (relaciones, aislamiento multi-tenant), `ReglasNegocioTest` (matriz de prioridad, SLA laboral). 16 tests en verde.
+
 ## Decisiones
 
 - **Sin Laravel Boost.** `boost:install` reescribe `AGENTS.md`/`CLAUDE.md`; el kit de `.agents/` ya cumple esa función.
@@ -32,10 +42,40 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - **Admin demo:** `admin@servicecloud.ai` (Jorge Espinoza) en lugar del correo del mockup.
 - **Sin "recordarme"** en el login: `usuarios` no tiene `remember_token` y no se cambia el esquema.
 - Commits directos en `main`, sin push.
+- **SLA por organización:** las FK compuestas `(organizacion_id, politica_sla_id)` impiden que un ticket/servicio/contrato use una plantilla global (`organizacion_id NULL`). Cada organización recibe su copia de las plantillas; la política por defecto se guarda en `configuracion_organizacion.configuracion->politica_sla_defecto_id`.
+- **Técnicos del mockup reasignados por organización:** el mockup asigna a Luis Ramírez (NovaTech) un ticket de AndesMarket, lo que el esquema prohíbe (FK compuesta). TKT-2026-00452 se asigna a María Peña (técnica de AndesMarket); Luis Ramírez queda como técnico de NovaTech.
+- **Fechas demo relativas:** los tickets del mockup se crean relativos a la hora del seed para que el "SLA restante" coincida con el mockup (00452 → 01h 12m, 00451 → 21 min). Los contratos usan fechas fijas de 2026.
+- **Colores de badges** no definidos en el mockup: Bloqueado/Suspendida/Rechazada = red, Cancelado/Retirado/Archivado = gray, Aprobada = cyan, En análisis = purple.
+- **Tests** siembran los datos demo (`$seed = true` en `Tests\TestCase`) porque `RefreshDatabase` migra una sola vez por proceso. Caché de PHPUnit en `storage/framework/cache/phpunit`.
+- Rutas de ticket y artículo usan `codigo` como clave (`/tickets/TKT-2026-00452`). Un registro de otra organización devuelve 404 (el scope lo oculta) en lugar de 403, para no revelar su existencia.
 
 ## Usuarios demo
 
-Se completa en la fase 1. Contraseña de todos: `password`.
+Contraseña de todos: `password`.
+
+| Rol | Correo | Nombre | Organización |
+|---|---|---|---|
+| Administrador SaaS | admin@servicecloud.ai | Jorge Espinoza | — (plataforma) |
+| Admin. organización | rosa.villanueva@andesmarket.pe | Rosa Villanueva | AndesMarket S.A.C. |
+| Supervisor | ana.torres@andesmarket.pe | Ana Torres | AndesMarket S.A.C. |
+| Técnico | maria.pena@andesmarket.pe | María Peña | AndesMarket S.A.C. |
+| Técnico | kevin.rojas@andesmarket.pe | Kevin Rojas | AndesMarket S.A.C. |
+| Solicitante | lucia.vega@andesmarket.pe | Lucía Vega | AndesMarket S.A.C. |
+| Solicitante | daniela.paredes@andesmarket.pe | Daniela Paredes | AndesMarket S.A.C. |
+| Admin. organización | patricia.gomez@novatech.pe | Patricia Gómez | Grupo NovaTech |
+| Supervisor | ricardo.flores@novatech.pe | Ricardo Flores | Grupo NovaTech |
+| Técnico | luis.ramirez@novatech.pe | Luis Ramírez | Grupo NovaTech |
+| Técnico | carla.medina@novatech.pe | Carla Medina | Grupo NovaTech |
+| Solicitante | marco.rios@novatech.pe | Marco Ríos | Grupo NovaTech |
+| Admin. organización | oscar.mendoza@logisticanorte.pe | Óscar Mendoza | Logística Norte Perú |
+| Técnico | diana.paz@logisticanorte.pe | Diana Paz | Logística Norte Perú |
+| Solicitante | maria.salazar@logisticanorte.pe | María Salazar | Logística Norte Perú |
+| Admin. organización | sofia.herrera@pacifico.pe | Sofía Herrera | Pacífico Centro Odontológico |
+| Técnico | hugo.vargas@pacifico.pe | Hugo Vargas | Pacífico Centro Odontológico |
+| Solicitante | carmen.lozano@pacifico.pe | Carmen Lozano | Pacífico Centro Odontológico |
+| Admin. organización | valeria.nunez@horizonte.edu.pe | Valeria Núñez | Instituto Horizonte |
+| Técnico (**inactivo**) | diego.campos@horizonte.edu.pe | Diego Campos | Instituto Horizonte |
+| Solicitante | andres.soto@horizonte.edu.pe | Andrés Soto | Instituto Horizonte |
 
 ## Comandos útiles
 
@@ -55,5 +95,7 @@ docker compose logs app --tail=100
 
 ## Pendiente
 
-- Fase 1 en adelante.
+- Fase 2 en adelante.
+- Logs técnicos y análisis de logs de ejemplo: se siembran en la fase 5 junto con el analizador.
+- Indexación RAG (`documentos_rag`, `fragmentos_rag`): fase 5 (`php artisan ia:indexar`).
 - Fase 7: confirmar con el equipo en qué nubes se desplegará.
