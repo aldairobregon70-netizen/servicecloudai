@@ -1,8 +1,6 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Tareas programadas (las ejecuta el servicio `scheduler` del compose con schedule:work)
+Schedule::command('contratos:actualizar-estados')->dailyAt('00:10');

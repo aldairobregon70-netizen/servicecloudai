@@ -128,6 +128,12 @@ class Usuario extends Authenticatable
         return null;
     }
 
+    /** Identificador legible para listados (la tabla no tiene código): USR-101... */
+    public function codigoVisible(): string
+    {
+        return sprintf('USR-%03d', 100 + $this->id);
+    }
+
     public function iniciales(): string
     {
         $partes = preg_split('/\s+/', trim($this->nombre)) ?: [];

@@ -42,6 +42,7 @@
     $('#modalBody').innerHTML = body;
     $('#modalFooter').innerHTML = footer;
     $('#modalBackdrop').classList.add('open');
+    $$('#modalBody form').forEach(filtrarPorOrganizacion);
     iconos();
     $('#modalBody input:not([type=hidden]), #modalBody select, #modalBody textarea')?.focus();
   }
@@ -82,6 +83,24 @@
       `<button class="btn btn-secondary" type="button" data-cerrar-modal>Cancelar</button><button class="btn ${escapeHTML(claseBoton)}" type="submit" form="formConfirmar">${icon(iconoBoton)} ${escapeHTML(boton)}</button>`);
   }
 
+  // ------------------------------------- selects dependientes de la organización
+  // Para el Administrador SaaS: las opciones con data-org solo se muestran si coinciden
+  // con la organización elegida (FK compuestas: todo debe ser de la misma organización).
+  function filtrarPorOrganizacion(form) {
+    const selectorOrg = form.querySelector('select[name="organizacion_id"]');
+    if (!selectorOrg) return;
+    const org = selectorOrg.value;
+    $$('option[data-org]', form).forEach(o => {
+      const visible = !!org && o.dataset.org === org;
+      o.hidden = !visible; o.disabled = !visible;
+      if (!visible && o.selected) o.selected = false;
+    });
+  }
+  document.addEventListener('change', e => {
+    if (e.target.matches('select[name="organizacion_id"]') && e.target.form) filtrarPorOrganizacion(e.target.form);
+  });
+  $$('form').forEach(filtrarPorOrganizacion);
+
   // ------------------------------------------------- formularios AJAX (modales)
   function limpiarErrores(form) {
     $$('.form-error', form).forEach(e => { e.textContent = ''; e.hidden = true; });
@@ -90,8 +109,9 @@
   function mostrarErrores(form, errores) {
     Object.entries(errores || {}).forEach(([campo, mensajes]) => {
       const nombre = campo.includes('.') ? campo.replace(/\.(\w+)/g, '[$1]') : campo;
-      const grupo = form.querySelector(`[data-campo="${CSS.escape(campo)}"]`) || form.querySelector(`[data-campo="${CSS.escape(nombre)}"]`);
-      const control = form.querySelector(`[name="${CSS.escape(nombre)}"]`) || form.querySelector(`[name="${CSS.escape(nombre)}[]"]`);
+      const base = campo.split('.')[0];
+      const grupo = form.querySelector(`[data-campo="${CSS.escape(campo)}"]`) || form.querySelector(`[data-campo="${CSS.escape(nombre)}"]`) || form.querySelector(`[data-campo="${CSS.escape(base)}"]`);
+      const control = form.querySelector(`[name="${CSS.escape(nombre)}"]`) || form.querySelector(`[name="${CSS.escape(base)}[]"]`) || form.querySelector(`[name="${CSS.escape(base)}"]`);
       control?.classList.add('is-invalid');
       const destino = grupo?.querySelector('.form-error');
       if (destino) { destino.textContent = mensajes[0]; destino.hidden = false; }

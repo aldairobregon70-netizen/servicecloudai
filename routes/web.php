@@ -34,13 +34,26 @@ Route::middleware('auth')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('/buscar', BusquedaController::class)->name('buscar');
 
-    // Cada módulo exige el permiso de su entrada de menú (config/servicecloud.php)
+    // Cada módulo exige el permiso de su entrada de menú (config/servicecloud.php);
+    // las acciones concretas las autorizan las Policies.
+
+    // Maestros (CRUD con exportación CSV)
+    $maestros = [
+        'organizaciones' => [OrganizacionController::class, 'organizacion'],
+        'usuarios' => [UsuarioController::class, 'usuario'],
+        'activos' => [ActivoController::class, 'activo'],
+        'servicios' => [ServicioController::class, 'servicio'],
+        'contratos' => [ContratoController::class, 'contrato'],
+    ];
+    foreach ($maestros as $clave => [$controlador, $parametro]) {
+        Route::middleware("can:modulo,'$clave'")->group(function () use ($clave, $controlador, $parametro) {
+            Route::get("/$clave/exportar", [$controlador, 'exportar'])->name("$clave.exportar");
+            Route::resource($clave, $controlador)->parameters([$clave => $parametro]);
+        });
+    }
+
+    // Módulos pendientes de las siguientes fases (solo listado)
     $modulos = [
-        'organizaciones' => OrganizacionController::class,
-        'usuarios' => UsuarioController::class,
-        'activos' => ActivoController::class,
-        'servicios' => ServicioController::class,
-        'contratos' => ContratoController::class,
         'tickets' => TicketController::class,
         'incidencias' => IncidenciaController::class,
         'problemas' => ProblemaController::class,
