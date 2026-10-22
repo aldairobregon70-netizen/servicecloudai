@@ -147,6 +147,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 - **Tabla `personal_access_tokens`** (Sanctum) agregada con una migración propia de Laravel, igual que `sessions`/`cache`/`jobs`: no modifica las 45 tablas del esquema.
 - **Cambio en `Dockerfile`** (stage `production`): variables por defecto para la nube. No cambia el comportamiento en desarrollo.
 - **Despliegue**: `docs/DESPLIEGUE.md` trae notas para AWS, Azure y Google Cloud porque el plan no indicaba qué nubes usará el equipo; ajustar cuando se definan.
+- **Despliegue en VM (GCP)**: `compose.prod.yaml` usa la imagen `production`, no publica PostgreSQL ni incluye pgAdmin, persiste adjuntos en el volumen `storage` y toma secretos de un `.env` que solo existe en el servidor (plantilla `.env.produccion.example`). Probado localmente: arranque, migraciones, siembra, login y escritura de adjuntos.
 - Rutas de ticket y artículo usan `codigo` como clave (`/tickets/TKT-2026-00452`). Un registro de otra organización devuelve 404 (el scope lo oculta) en lugar de 403, para no revelar su existencia.
 
 ## Usuarios demo

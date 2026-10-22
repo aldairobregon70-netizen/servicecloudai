@@ -91,6 +91,7 @@ Sustituye por las nubes que use el equipo.
 - Programador: segunda Container App con `schedule:work` (sin ingreso).
 
 ### Google Cloud
+- **VM de Compute Engine con Docker Compose** (VPC propia, firewall, IP estática): guía paso a paso en `docs/DESPLIEGUE-GCP-VM.md` con `compose.prod.yaml`.
 - **Cloud Run** (puerto 8080, `/up`) con **Cloud SQL for PostgreSQL** (conector de Cloud SQL o IP privada).
 - Secretos en Secret Manager. Adjuntos: Cloud Storage con interoperabilidad S3 (`AWS_ENDPOINT=https://storage.googleapis.com`).
 - Programador: Cloud Scheduler → Cloud Run Job con `php artisan schedule:run`, o un servicio con `min-instances=1` y `schedule:work`.
