@@ -5,7 +5,6 @@
 @php
     use App\Support\Formato;
     $usuario = auth()->user();
-    $colorPrioridad = ['critica' => '#ff9aab', 'alta' => '#ffd468', 'media' => '#8ec5ff', 'baja' => '#b7c9ef'];
     $iconoCategoria = ['Redes' => 'network', 'Aplicaciones' => 'app-window', 'Bases de datos' => 'database', 'Seguridad' => 'shield-check', 'Cloud' => 'cloud', 'Hardware' => 'cpu'];
 @endphp
 
@@ -40,7 +39,7 @@
         <x-meta-box etiqueta="SLA restante">
           @if ($estadoSla['tipo'] === 'cumplido')<x-badge valor="Cumplido" color="green" />
           @elseif ($estadoSla['tipo'] === 'incumplido')<x-badge valor="Incumplido" color="red" />
-          @else<em style="font-style:normal;color:{{ in_array($estadoSla['tipo'], ['vencido', 'riesgo'], true) ? '#ff9aab' : 'inherit' }}">{{ $estadoSla['texto'] }}{{ $estadoSla['tipo'] === 'pausa' ? ' · en pausa' : '' }}</em>@endif
+          @else<em style="font-style:normal" class="{{ in_array($estadoSla['tipo'], ['vencido', 'riesgo'], true) ? 'texto-riesgo' : '' }}">{{ $estadoSla['texto'] }}{{ $estadoSla['tipo'] === 'pausa' ? ' · en pausa' : '' }}</em>@endif
         </x-meta-box>
         <x-meta-box etiqueta="Creado" :valor="Formato::fechaHora($ticket->creado_en)" />
         <x-meta-box etiqueta="Canal" :valor="$ticket->origen->label()" />
@@ -96,7 +95,7 @@
       @if ($clasificacion)
         <div class="ai-class"><span>Clasificación</span><b>{{ \Illuminate\Support\Str::contains((string) $clasificacion->explicacion, ':') ? \Illuminate\Support\Str::before($clasificacion->explicacion, ':') : $ticket->tipo->label() }}</b></div>
         <div class="ai-class"><span>Categoría</span><b>{{ $clasificacion->categoria_sugerida ?? '—' }}</b></div>
-        <div class="ai-class"><span>Prioridad</span><b style="color:{{ $colorPrioridad[$clasificacion->prioridad_sugerida?->value] ?? '#fff' }}">{{ $clasificacion->prioridad_sugerida?->label() ?? '—' }}</b></div>
+        <div class="ai-class"><span>Prioridad</span><b class="prioridad-{{ $clasificacion->prioridad_sugerida?->value ?? 'media' }}">{{ $clasificacion->prioridad_sugerida?->label() ?? '—' }}</b></div>
         <div class="ai-class"><span>Confianza</span><div class="confidence"><div class="progress"><span style="width:{{ round($clasificacion->confianza * 100) }}%"></span></div><b>{{ round($clasificacion->confianza * 100) }}%</b></div></div>
         @if ($clasificacion->aceptada === null && $usuario->can('priorizar', $ticket))
           <div class="page-actions" style="margin-bottom:10px">
@@ -164,7 +163,7 @@
             <span class="form-error" hidden></span>
           </div>
           @can('verInternos', $ticket)
-            <label class="form-group full" style="display:flex;gap:8px;align-items:center;font-size:11px;color:#c2d3f7">
+            <label class="form-group full" style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--gris-600)">
               <input type="checkbox" name="es_interno" value="1" checked /> Nota interna (no visible para el solicitante)
             </label>
           @endcan

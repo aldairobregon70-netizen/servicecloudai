@@ -24,10 +24,10 @@ class SlaController extends Controller
 {
     /** Tarjetas del mockup: etiqueta e ícono por prioridad. */
     private const NIVELES = [
-        'critica' => ['Crítico', 'siren', '#FB7185'],
-        'alta' => ['Alta', 'triangle-alert', '#FBBF24'],
+        'critica' => ['Crítico', 'siren', '#EF4444'],
+        'alta' => ['Alta', 'triangle-alert', '#F59E0B'],
         'media' => ['Media', 'gauge', '#3B82F6'],
-        'baja' => ['Baja', 'circle-check-big', '#34D399'],
+        'baja' => ['Baja', 'circle-check-big', '#22C55E'],
     ];
 
     public function __construct(private DashboardService $metricas, private SlaService $sla) {}
@@ -73,8 +73,8 @@ class SlaController extends Controller
                 'options' => [
                     'plugins' => ['legend' => ['display' => false]],
                     'scales' => [
-                        'y' => ['min' => (int) min(70, max(0, floor(($valores->min() ?? 70) / 10) * 10)), 'max' => 100, 'ticks' => ['color' => '#7898d4', 'font' => ['size' => 9]], 'grid' => ['color' => 'rgba(110,155,255,.06)']],
-                        'x' => ['ticks' => ['color' => '#7898d4', 'font' => ['size' => 9]], 'grid' => ['display' => false]],
+                        'y' => ['min' => (int) min(70, max(0, floor(($valores->min() ?? 70) / 10) * 10)), 'max' => 100, 'ticks' => ['color' => '#6b7280', 'font' => ['size' => 9]], 'grid' => ['color' => 'rgba(17,24,39,.06)']],
+                        'x' => ['ticks' => ['color' => '#6b7280', 'font' => ['size' => 9]], 'grid' => ['display' => false]],
                     ],
                 ],
             ],

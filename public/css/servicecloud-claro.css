@@ -1,0 +1,265 @@
+/* =====================================================================
+   ServiceCloud AI — Tema claro (22/10/2026, a pedido del equipo)
+   Blancos y grises, con el azul solo como acento.
+   Se carga DESPUÉS de servicecloud.css y solo reemplaza colores, fondos,
+   bordes y sombras: clases, estructura, espaciados y breakpoints del
+   mockup no cambian. Para volver al tema original basta con quitar la
+   línea de este archivo en layouts/app.blade.php y layouts/guest.blade.php.
+   ===================================================================== */
+:root{
+  --bg:#f4f5f7;
+  --bg2:#eceef1;
+  --bg3:#e3e6ea;
+  --primary:#2563eb;
+  --primary2:#3b82f6;
+  --blue:#3b82f6;
+  --cyan:#2563eb;
+  --purple:#6d28d9;
+  --white:#ffffff;
+  --muted:#6b7280;
+  --text:#1f2937;
+  --panel:#ffffff;
+  --panel-strong:#ffffff;
+  --line:#e5e7eb;
+  --line-strong:#d1d5db;
+  --success:#16a34a;
+  --warning:#d97706;
+  --danger:#dc2626;
+  --info:#2563eb;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+  --glow:0 0 0 1px rgba(37,99,235,.10),0 6px 18px rgba(16,24,40,.08);
+  --tinta:#111827;
+  --gris-50:#f9fafb;
+  --gris-100:#f3f4f6;
+  --gris-300:#d1d5db;
+  --gris-400:#9ca3af;
+  --gris-600:#4b5563;
+  --gris-700:#374151;
+}
+body{background:var(--bg);color:var(--text)}
+body::before{display:none}
+
+/* ---------------------------------------------------------------- sidebar */
+.sidebar{background:#fff;border-right:1px solid var(--line);box-shadow:none;scrollbar-color:var(--gris-300) transparent}
+.sidebar::-webkit-scrollbar-thumb{background:var(--gris-300)}
+.brand{border-bottom-color:var(--line)}
+.brand-mark{background:var(--gris-100);border-color:var(--line);box-shadow:none}
+.brand-mark i{color:var(--primary)}
+.brand-title{color:var(--tinta)}
+.brand-sub{color:var(--muted)}
+.nav-section-label{color:var(--gris-400)}
+.nav-item,a.nav-item{color:var(--gris-600)}
+.nav-item:hover,a.nav-item:hover{background:var(--gris-100);color:var(--tinta);border-color:transparent}
+.nav-item.active,a.nav-item.active{color:var(--tinta);background:var(--gris-100);border-color:var(--line);box-shadow:inset 3px 0 0 var(--primary);font-weight:600}
+.nav-item.active::after{background:var(--primary);box-shadow:none}
+.nav-item.active i{color:var(--primary)}
+.sidebar-footer{border-top-color:var(--line)}
+.ai-status{background:var(--gris-50);border-color:var(--line)}
+.ai-dot{box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+.ai-status b{color:var(--tinta)}
+
+/* ---------------------------------------------------------------- header */
+.header{background:rgba(255,255,255,.92);border-bottom-color:var(--line)}
+.icon-btn{background:#fff;border-color:var(--line);color:var(--gris-700)}
+.icon-btn:hover{background:var(--gris-100);border-color:var(--gris-300)}
+.breadcrumb .eyebrow{color:var(--gris-400)}
+.breadcrumb strong{color:var(--tinta)}
+.search-box{background:var(--gris-50);border-color:var(--line)}
+.search-box:focus-within{background:#fff;border-color:var(--primary2);box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.search-box i{color:var(--gris-400)}
+.search-box input{color:var(--tinta)}
+.search-box input::placeholder{color:var(--gris-400)}
+.search-results,.dropdown-panel{background:#fff;border-color:var(--line);box-shadow:0 12px 32px rgba(16,24,40,.12)}
+.result-item:hover,.notif-item:hover{background:var(--gris-100)}
+.result-icon{background:var(--gris-100);color:var(--primary)}
+.result-text b{color:var(--tinta)}
+.ai-button{background:var(--tinta);border-color:var(--tinta);color:#fff;box-shadow:none}
+.ai-button:hover{background:#1f2937}
+.badge-dot{border-color:#fff}
+.avatar{background:var(--gris-700);color:#fff;box-shadow:none}
+.user-meta b{color:var(--tinta)}
+
+/* ---------------------------------------------------------------- encabezado de página y botones */
+.page-title h1{color:var(--tinta)}
+.btn{background:#fff;border-color:var(--gris-300);color:var(--gris-700)}
+.btn:hover{border-color:var(--gris-400);box-shadow:0 2px 6px rgba(16,24,40,.08)}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:none}
+.btn-primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+.btn-secondary{background:#fff}
+.btn-danger{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.btn-ghost{background:transparent}
+
+/* ---------------------------------------------------------------- tarjetas, KPIs, insights */
+.card{background:#fff;border-color:var(--line);box-shadow:var(--shadow)}
+.card::before{display:none}
+.kpi-icon{background:var(--gris-100);border-color:var(--line);color:var(--primary)}
+.kpi.warn .kpi-icon{background:#fffbeb;color:var(--warning)}
+.kpi.danger .kpi-icon{background:#fef2f2;color:var(--danger)}
+.kpi.purple .kpi-icon{background:var(--gris-100);color:var(--gris-700)}
+.kpi-value{color:var(--tinta)}
+.card-title h3{color:var(--tinta)}
+.insights{background:#fff;border-color:var(--line);box-shadow:var(--shadow)}
+.spark{background:var(--tinta);box-shadow:none}
+.spark i{color:#fff}
+.insights-head h3{color:var(--tinta)}
+.insight-item{background:var(--gris-50);border-color:var(--line)}
+.insight-item b{color:var(--tinta)}
+.activity-row{border-top-color:var(--line)}
+.activity-dot{background:var(--gris-400);box-shadow:none}
+.activity-row b{color:var(--tinta)}
+
+/* ---------------------------------------------------------------- toolbar, campos, tablas */
+.toolbar{background:#fff;border-color:var(--line)}
+.field,.form-control{background:#fff;border-color:var(--gris-300);color:var(--tinta)}
+.field:focus,.form-control:focus{border-color:var(--primary2);box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.field::placeholder,.form-control::placeholder{color:var(--gris-400)}
+.field option,.form-control option{background:#fff;color:var(--tinta)}
+th{color:var(--muted);background:var(--gris-50);border-bottom-color:var(--line)}
+td{color:var(--gris-700);border-bottom-color:var(--gris-100)}
+tr:hover td{background:var(--gris-50)}
+.table-link{color:var(--primary)}
+.table-link:hover{color:#1e40af}
+
+/* ---------------------------------------------------------------- badges (fondo suave, texto oscuro) */
+.badge::before{box-shadow:none}
+.badge-blue{background:#eff6ff;color:#1d4ed8;border-color:#dbeafe}
+.badge-cyan{background:#f0f9ff;color:#0369a1;border-color:#e0f2fe}
+.badge-green{background:#f0fdf4;color:#15803d;border-color:#dcfce7}
+.badge-yellow{background:#fffbeb;color:#b45309;border-color:#fef3c7}
+.badge-red{background:#fef2f2;color:#b91c1c;border-color:#fee2e2}
+.badge-purple{background:#f5f3ff;color:#6d28d9;border-color:#ede9fe}
+.badge-gray{background:var(--gris-100);color:var(--gris-600);border-color:var(--line)}
+.icon-mini{background:#fff;border-color:var(--line);color:var(--muted)}
+.icon-mini:hover{background:var(--gris-100);border-color:var(--gris-300);color:var(--tinta)}
+
+/* ---------------------------------------------------------------- detalle de ticket y panel IA */
+.ticket-title{color:var(--tinta)}
+.ticket-desc{color:var(--gris-700)}
+.meta-box{background:var(--gris-50);border-color:var(--line)}
+.meta-box span{color:var(--muted)}
+.meta-box b{color:var(--tinta)}
+.timeline-item{border-top-color:var(--line)}
+.timeline-icon{background:var(--gris-100);color:var(--primary)}
+.timeline-item b{color:var(--tinta)}
+.ai-panel{background:#fff;border-color:var(--line);box-shadow:var(--shadow)}
+.ai-label{color:var(--tinta)}
+.ai-label i{color:var(--primary)}
+.ai-class{background:var(--gris-50);border-color:var(--line)}
+.ai-class span{color:var(--muted)}
+.ai-class b{color:var(--tinta)}
+.progress{background:var(--bg3);border-color:transparent}
+.progress > span{background:var(--primary);box-shadow:none}
+.ai-list li{color:var(--gris-700)}
+.ai-list li::before{box-shadow:none}
+.rag-article{background:var(--gris-50);border-color:var(--line);color:var(--tinta)}
+.rag-article:hover{border-color:var(--gris-300)}
+.rag-article i{color:var(--primary)}
+.diagnosis{background:var(--gris-50);border-color:var(--line)}
+.diagnosis h4{color:var(--tinta)}
+.diagnosis p{color:var(--gris-700)}
+
+/* ---------------------------------------------------------------- asistente IA */
+.chat-head{border-bottom-color:var(--line)}
+.chat-head h3{color:var(--tinta)}
+.message-avatar{background:var(--gris-100);border-color:var(--line)}
+.message-avatar i{color:var(--gris-700)}
+.bubble{background:var(--gris-50);border-color:var(--line);color:var(--text)}
+.message.user .bubble{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.bubble strong{color:inherit}
+.bubble code{background:var(--bg3)}
+.typing i{background:var(--gris-400)}
+.chat-input{border-top-color:var(--line)}
+.quick-action{background:#fff;border-color:var(--line);color:var(--gris-700)}
+.quick-action:hover{background:var(--gris-50);border-color:var(--gris-300)}
+.quick-action i{color:var(--gris-600)}
+.status-chip{background:var(--gris-50);border-color:var(--line)}
+.status-chip b{color:var(--tinta)}
+.status-chip span{color:var(--success)}
+
+/* ---------------------------------------------------------------- análisis de logs */
+.log-editor textarea{background:var(--gris-50);color:var(--tinta);border-color:var(--line)}
+.log-editor textarea:focus{background:#fff;border-color:var(--primary2);box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.log-event{background:var(--gris-50);border-color:var(--line)}
+.log-event b{color:var(--tinta)}
+.level.critical{background:#fef2f2;color:#b91c1c}
+.level.warning{background:#fffbeb;color:#b45309}
+.level.info{background:var(--gris-100);color:var(--gris-700)}
+
+/* ---------------------------------------------------------------- SLA, kanban, conocimiento, reportes */
+.sla-card .priority-mark{background:var(--gris-100);color:var(--gris-700)}
+.sla-card h3{color:var(--tinta)}
+.sla-times div{background:var(--gris-50);border-color:var(--line)}
+.sla-times b{color:var(--tinta)}
+.kanban-col{background:var(--gris-100);border-color:var(--line)}
+.kanban-col.drag-over{border-color:var(--primary2);box-shadow:inset 0 0 0 1px var(--primary2)}
+.kanban-head b{color:var(--tinta)}
+.kanban-count{background:#fff;color:var(--gris-600);border:1px solid var(--line)}
+.kanban-card{background:#fff;border-color:var(--line);box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.kanban-card:hover{border-color:var(--gris-300)}
+.kanban-card h4{color:var(--tinta)}
+.mini-avatar{background:var(--gris-700);color:#fff}
+.cat-btn{background:#fff;border-color:var(--line);color:var(--gris-600)}
+.cat-btn.active,.cat-btn:hover{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.article .article-icon{background:var(--gris-100);color:var(--primary)}
+.article h3{color:var(--tinta)}
+.article:hover{border-color:var(--gris-300);box-shadow:0 6px 18px rgba(16,24,40,.08)}
+.article-footer{color:var(--gris-400)}
+.report-icon{background:var(--gris-100);color:var(--primary)}
+.report-card h3{color:var(--tinta)}
+.empty i{color:var(--gris-400)}
+.empty b{color:var(--gris-700)}
+
+/* ---------------------------------------------------------------- modal, formularios, toasts */
+.modal-backdrop{background:rgba(17,24,39,.40);backdrop-filter:blur(2px)}
+.modal{background:#fff;border-color:var(--line);box-shadow:0 24px 64px rgba(16,24,40,.22)}
+.modal-head{border-bottom-color:var(--line)}
+.modal-head h3{color:var(--tinta)}
+.modal-footer{border-top-color:var(--line)}
+.form-group label{color:var(--gris-600)}
+.toast{background:#fff;border-color:var(--line);box-shadow:0 12px 32px rgba(16,24,40,.14)}
+.toast-icon{background:#f0fdf4;color:var(--success)}
+.toast-error .toast-icon{background:#fef2f2;color:var(--danger)}
+.toast-warn .toast-icon{background:#fffbeb;color:var(--warning)}
+.toast b{color:var(--tinta)}
+
+/* ---------------------------------------------------------------- configuración, notificaciones, menús */
+.settings-row{border-top-color:var(--line)}
+.settings-row b{color:var(--tinta)}
+.switch{background:var(--gris-300);border-color:var(--gris-300)}
+.switch::after{background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.2)}
+.switch.on{background:var(--primary);border-color:var(--primary)}
+.switch.on::after{background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.2)}
+.notif-item.unread{background:#f8fafc}
+.notif-item .notif-dot{background:var(--primary);box-shadow:none}
+.profile-drop-head{border-bottom-color:var(--line)}
+.profile-drop-head b{color:var(--tinta)}
+.drop-action{color:var(--gris-700)}
+.drop-action:hover{background:var(--gris-100)}
+.mobile-overlay{background:rgba(17,24,39,.35)}
+
+/* ---------------------------------------------------------------- extensiones (login, paginación, validación) */
+.auth-alert{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.auth-card h1{color:var(--tinta)}
+.auth-footer{border-top-color:var(--line)}
+.pagination{border-top-color:var(--line)}
+.pagination-links .active{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.form-control.is-invalid,.field.is-invalid{border-color:#fca5a5;box-shadow:0 0 0 3px rgba(220,38,38,.08)}
+
+/* ---------------------------------------------------------------- colores semánticos usados desde las vistas */
+.texto-riesgo{color:var(--danger)!important;font-weight:700}
+.texto-sla{color:var(--gris-700);font-weight:700}
+.prioridad-critica,.ai-class b.prioridad-critica{color:#b91c1c}
+.prioridad-alta,.ai-class b.prioridad-alta{color:#b45309}
+.prioridad-media,.ai-class b.prioridad-media{color:#1d4ed8}
+.prioridad-baja,.ai-class b.prioridad-baja{color:var(--gris-600)}
+
+/* ---------------------------------------------------------------- íconos Lucide
+   Lucide reemplaza <i data-lucide> por <svg>; estas reglas aplican el color al ícono final. */
+.spark,.chat-head .spark{color:#fff}
+.brand-mark svg{color:var(--primary)}
+.nav-item.active svg{color:var(--primary)}
+.ai-label svg,.rag-article svg{color:var(--primary)}
+.search-box svg{color:var(--gris-400)}
+.quick-action svg{color:var(--gris-600)}
+.message-avatar svg{color:var(--gris-700)}
+.empty svg{color:var(--gris-400)}

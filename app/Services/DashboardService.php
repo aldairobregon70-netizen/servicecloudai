@@ -26,8 +26,9 @@ use Illuminate\Support\Str;
 class DashboardService
 {
     private const COLORES = [
-        'blue' => '#3B82F6', 'cyan' => '#5EEBFF', 'purple' => '#7C5CFF',
-        'red' => '#FB7185', 'yellow' => '#FBBF24', 'green' => '#34D399',
+        // Tema claro: azul solo como acento; el resto en grises y colores semánticos
+        'blue' => '#3B82F6', 'slate' => '#64748B', 'gray' => '#CBD5E1',
+        'red' => '#EF4444', 'yellow' => '#F59E0B', 'green' => '#22C55E',
     ];
 
     private CarbonImmutable $ahora;
@@ -148,8 +149,8 @@ class DashboardService
                         $estado(EstadoTicket::EnEspera),
                         $estado(EstadoTicket::Resuelto, EstadoTicket::Cerrado),
                     ],
-                    'backgroundColor' => [$c['blue'], $c['purple'], $c['yellow'], $c['green']],
-                    'borderColor' => 'rgba(2,11,58,.9)', 'borderWidth' => 3, 'hoverOffset' => 4,
+                    'backgroundColor' => [$c['blue'], $c['slate'], $c['yellow'], $c['green']],
+                    'borderColor' => '#ffffff', 'borderWidth' => 3, 'hoverOffset' => 4,
                 ]]],
                 'options' => ['cutout' => '70%'],
             ],
@@ -158,7 +159,7 @@ class DashboardService
                 'data' => ['labels' => ['Crítica', 'Alta', 'Media', 'Baja'], 'datasets' => [[
                     'label' => 'Tickets',
                     'data' => array_map(fn ($p) => (int) ($porPrioridad[$p] ?? 0), ['critica', 'alta', 'media', 'baja']),
-                    'backgroundColor' => [$c['red'], $c['yellow'], $c['blue'], '#7f95c9'],
+                    'backgroundColor' => [$c['red'], $c['yellow'], $c['blue'], $c['gray']],
                     'borderRadius' => 7, 'borderSkipped' => false,
                 ]]],
                 'options' => ['plugins' => ['legend' => ['display' => false]]],
@@ -169,9 +170,9 @@ class DashboardService
                     'labels' => $dias->map(fn ($d) => $d->translatedFormat('j M'))->map(fn ($s) => rtrim(ucfirst($s), '.'))->values()->all(),
                     'datasets' => [
                         ['label' => 'Creados', 'data' => $dias->map(fn ($d) => (int) ($creados[$d->toDateString()] ?? 0))->values()->all(),
-                            'borderColor' => $c['cyan'], 'backgroundColor' => 'rgba(94,235,255,.10)', 'fill' => true, 'tension' => .35, 'pointRadius' => 2],
+                            'borderColor' => $c['blue'], 'backgroundColor' => 'rgba(59,130,246,.08)', 'fill' => true, 'tension' => .35, 'pointRadius' => 2],
                         ['label' => 'Resueltos', 'data' => $dias->map(fn ($d) => (int) ($resueltos[$d->toDateString()] ?? 0))->values()->all(),
-                            'borderColor' => $c['purple'], 'backgroundColor' => 'rgba(124,92,255,.06)', 'fill' => true, 'tension' => .35, 'pointRadius' => 2],
+                            'borderColor' => $c['slate'], 'backgroundColor' => 'rgba(100,116,139,.06)', 'fill' => true, 'tension' => .35, 'pointRadius' => 2],
                     ],
                 ],
             ],
@@ -179,7 +180,7 @@ class DashboardService
                 'type' => 'doughnut',
                 'data' => ['labels' => ['Cumplido', 'Incumplido'], 'datasets' => [[
                     'data' => $cumplimiento === null ? [0, 0] : [$cumplimiento, round(100 - $cumplimiento, 1)],
-                    'backgroundColor' => [$c['green'], $c['red']], 'borderColor' => 'rgba(2,11,58,.9)', 'borderWidth' => 3,
+                    'backgroundColor' => [$c['green'], $c['red']], 'borderColor' => '#ffffff', 'borderWidth' => 3,
                 ]]],
                 'options' => ['cutout' => '76%'],
             ],

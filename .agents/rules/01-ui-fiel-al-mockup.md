@@ -33,7 +33,7 @@ Referencia única: `docs/mockup/index.html`. Antes de crear o modificar cualquie
 ## Prohibido
 
 - Tailwind, Bootstrap, plantillas de admin, starter kits o cualquier otro sistema de diseño.
-- Cambiar la paleta, tipografía, radios o sombras.
+- Cambiar la paleta, tipografía, radios o sombras. Excepción vigente: la paleta clara (blancos, grises, poco azul) de `public/css/servicecloud-claro.css`, pedida por el usuario; los colores nuevos van ahí y no en línea.
 - Textos en inglés en la interfaz, salvo los que ya están en inglés en el mockup ("AI Classification", "Knowledge Suggestion", "AI Log Analyzer", "ServiceCloud AI Insights").
 - Dejar números fijos en KPIs o gráficos: todo sale de consultas.
 

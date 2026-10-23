@@ -34,7 +34,7 @@
               @case('incumplido') <x-badge valor="Incumplido" color="red" /> @break
               @case('sin') — @break
               @default
-                <span style="font-weight:800;color:{{ in_array($estadoSla['tipo'], ['vencido', 'riesgo'], true) ? '#ff9aab' : '#a9c8ff' }}" @if ($estadoSla['tipo'] === 'pausa') title="SLA en pausa (en espera)" @endif>{{ $estadoSla['texto'] }}</span>
+                <span class="{{ in_array($estadoSla['tipo'], ['vencido', 'riesgo'], true) ? 'texto-riesgo' : 'texto-sla' }}" @if ($estadoSla['tipo'] === 'pausa') title="SLA en pausa (en espera)" @endif>{{ $estadoSla['texto'] }}</span>
             @endswitch
           </td>
           <td>{{ App\Support\Formato::fechaHora($ticket->creado_en) }}</td>

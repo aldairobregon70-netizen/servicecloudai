@@ -110,6 +110,7 @@ Plan vivo. Se actualiza al cerrar cada fase (Hecho / Pendiente / Decisiones).
 
 - **Sin Laravel Boost.** `boost:install` reescribe `AGENTS.md`/`CLAUDE.md`; el kit de `.agents/` ya cumple esa función.
 - **Agentes de `.agents/agents/`** se aplican como roles por fase en una sola sesión (no en paralelo: tocan los mismos archivos).
+- **Tema claro (pedido del usuario).** `public/css/servicecloud-claro.css` se carga después de `servicecloud.css` y redefine la paleta: fondos blancos y grises, azul solo en acciones principales y en el ítem activo. Las paletas de gráficos (DashboardService, SlaController, `scInitChart`) siguen el mismo tono. Para volver al mockup original basta quitar el `<link>` en `layouts/app` y `layouts/guest`.
 - **Permisos del volumen en Windows:** el código montado aparece como `root` (755) dentro del contenedor y `www-data` no podía escribir en `storage/` ni `bootstrap/cache` (error 500 `tempnam()`). Se corrige una vez con `docker compose exec -T -u root app chmod -R a+rwX storage bootstrap/cache` (persiste en el volumen). Comandos que escriben código (`pint`, `make:*`, `composer require`) se ejecutan con `-u root`.
 - **Admin demo:** `admin@servicecloud.ai` (Jorge Espinoza) en lugar del correo del mockup.
 - **Sin "recordarme"** en el login: `usuarios` no tiene `remember_token` y no se cambia el esquema.

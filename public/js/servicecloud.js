@@ -166,12 +166,13 @@
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { labels: { color: '#AFC8FF', boxWidth: 9, boxHeight: 9, usePointStyle: true, font: { size: 10 } } },
-          tooltip: { backgroundColor: '#04103D', titleColor: '#fff', bodyColor: '#cfe0ff', borderColor: 'rgba(94,235,255,.22)', borderWidth: 1, padding: 10 }
+          // Tema claro: textos grises sobre blanco y tooltip oscuro
+          legend: { labels: { color: '#4b5563', boxWidth: 9, boxHeight: 9, usePointStyle: true, font: { size: 10 } } },
+          tooltip: { backgroundColor: '#111827', titleColor: '#fff', bodyColor: '#e5e7eb', borderColor: '#111827', borderWidth: 1, padding: 10 }
         },
         scales: type === 'doughnut' ? {} : {
-          x: { ticks: { color: '#7898d4', font: { size: 9 } }, grid: { color: 'rgba(110,155,255,.06)' }, border: { color: 'rgba(110,155,255,.08)' } },
-          y: { ticks: { color: '#7898d4', font: { size: 9 } }, grid: { color: 'rgba(110,155,255,.06)' }, border: { color: 'rgba(110,155,255,.08)' } }
+          x: { ticks: { color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(17,24,39,.06)' }, border: { color: 'rgba(17,24,39,.10)' } },
+          y: { ticks: { color: '#6b7280', font: { size: 9 } }, grid: { color: 'rgba(17,24,39,.06)' }, border: { color: 'rgba(17,24,39,.10)' } }
         },
         ...options
       }

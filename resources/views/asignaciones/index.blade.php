@@ -22,7 +22,7 @@
               <h4>{{ \Illuminate\Support\Str::limit($ticket->titulo, 70) }}</h4>
               <p>{{ $ticket->codigo }}</p>
               <div class="kanban-meta">
-                <span class="muted" style="font-size:9px;{{ in_array($estadoSla['tipo'], ['vencido', 'riesgo'], true) ? 'color:#ff9aab' : '' }}">
+                <span class="muted {{ in_array($estadoSla['tipo'], ['vencido', 'riesgo'], true) ? 'texto-riesgo' : '' }}" style="font-size:9px">
                   @switch($estadoSla['tipo'])
                     @case('cumplido') SLA cumplido @break
                     @case('incumplido') SLA incumplido @break
