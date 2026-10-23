@@ -10,6 +10,7 @@ use App\Models\PoliticaSla;
 use App\Models\PreferenciaNotificacion;
 use App\Models\Usuario;
 use App\Services\AI\GestorIA;
+use App\Services\CargaTecnicos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -51,6 +52,8 @@ class ConfiguracionController extends Controller
             'clasificacion_automatica' => $organizacion ? $booleano : ['prohibited'],
             'prioridad_automatica' => $organizacion ? $booleano : ['prohibited'],
             'rag_habilitado' => $organizacion ? $booleano : ['prohibited'],
+            'asignacion_automatica' => $organizacion ? ['sometimes', 'boolean'] : ['prohibited'],
+            'carga_maxima' => $organizacion ? ['sometimes', 'integer', 'min:1', 'max:50'] : ['prohibited'],
             'politica_sla_defecto_id' => $organizacion
                 ? ['nullable', 'integer', Rule::exists('politicas_sla', 'id')->where('organizacion_id', $organizacion->id)]
                 : ['prohibited'],
@@ -66,7 +69,11 @@ class ConfiguracionController extends Controller
                 'clasificacion_automatica' => $datos['clasificacion_automatica'],
                 'prioridad_automatica' => $datos['prioridad_automatica'],
                 'rag_habilitado' => $datos['rag_habilitado'],
-                'configuracion' => array_merge($config->configuracion ?? [], ['politica_sla_defecto_id' => $datos['politica_sla_defecto_id'] ?? null]),
+                'configuracion' => array_merge($config->configuracion ?? [], [
+                    'politica_sla_defecto_id' => $datos['politica_sla_defecto_id'] ?? null,
+                    'asignacion_automatica' => (bool) ($datos['asignacion_automatica'] ?? $config->configuracion['asignacion_automatica'] ?? true),
+                    'carga_maxima' => (int) ($datos['carga_maxima'] ?? $config->configuracion['carga_maxima'] ?? CargaTecnicos::MAXIMO_POR_DEFECTO),
+                ]),
             ]);
         }
 

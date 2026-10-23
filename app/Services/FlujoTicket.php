@@ -118,7 +118,7 @@ class FlujoTicket
         $paso = match ($ticket->estado) {
             EstadoTicket::Abierto => $ticket->tecnico_id
                 ? ['Inicia la atención', 'El ticket tiene técnico pero aún no se empezó a trabajar.', ['iniciar', 'cancelar']]
-                : ['Asigna un técnico', 'Nadie atiende este ticket todavía.'.($puedeAsignar ? ' Asígnalo o usa la autoasignación.' : ''), $puedeAsignar ? ['asignar', 'cancelar'] : []],
+                : ['Asigna un técnico', 'Nadie atiende este ticket todavía (no había técnicos disponibles o la asignación automática está desactivada).'.($puedeAsignar ? ' Elige a quién asignarlo según su carga.' : ''), $puedeAsignar ? ['asignar', 'cancelar'] : []],
             EstadoTicket::Asignado => ['Inicia la atención', 'Al iniciar, el usuario recibe un aviso de que su ticket está siendo atendido y se registra la primera respuesta del SLA.', ['iniciar', 'pedir_info', 'cancelar']],
             EstadoTicket::EnProgreso => ['Resuelve o pide información', 'Cuando lo soluciones, describe la solución para que el usuario la confirme. Si necesitas datos del usuario, pídeselos: el SLA se pausa mientras espera.', ['resolver', 'pedir_info', 'cancelar']],
             EstadoTicket::EnEspera => ['Esperando al usuario', 'El SLA está en pausa. Cuando el usuario responda, el ticket vuelve a "En progreso" automáticamente; también puedes reanudarlo tú.', ['reanudar', 'resolver', 'cancelar']],
@@ -127,6 +127,19 @@ class FlujoTicket
             EstadoTicket::Cancelado => ['Ticket cancelado', 'No quedan acciones pendientes.', []],
         };
 
-        return ['titulo' => $paso[0], 'texto' => $paso[1].($ticket->estado->esActivo() ? $urgencia : ''), 'acciones' => $paso[2]];
+        // Reasignar (gestión) o pedir reasignación (técnico a cargo), antes de "cancelar"
+        $acciones = $paso[2];
+        $extra = match (true) {
+            ! $ticket->tecnico_id || ! $ticket->estado->esActivo() => null,
+            $puedeAsignar => 'reasignar',
+            $usuario->can('solicitarReasignacion', $ticket) => 'solicitar_reasignacion',
+            default => null,
+        };
+        if ($extra) {
+            $posicion = array_search('cancelar', $acciones, true);
+            array_splice($acciones, $posicion === false ? count($acciones) : $posicion, 0, [$extra]);
+        }
+
+        return ['titulo' => $paso[0], 'texto' => $paso[1].($ticket->estado->esActivo() ? $urgencia : ''), 'acciones' => $acciones];
     }
 }

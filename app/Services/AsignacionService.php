@@ -15,7 +15,7 @@ class AsignacionService
     /** Columnas del kanban (mismo orden que el mockup). */
     public const COLUMNAS = ['sin_asignar' => 'Sin asignar', 'asignado' => 'Asignado', 'en_progreso' => 'En progreso', 'en_espera' => 'En espera', 'resuelto' => 'Resuelto'];
 
-    public function __construct(private TicketService $tickets) {}
+    public function __construct(private TicketService $tickets, private CargaTecnicos $cargas) {}
 
     public static function columnaDe(Ticket $ticket): ?string
     {
@@ -79,7 +79,7 @@ class AsignacionService
     }
 
     /**
-     * Asigna los tickets sin técnico al técnico activo con menor carga de su organización.
+     * Asigna los tickets sin técnico (los más urgentes primero) al técnico activo con menor carga.
      *
      * @return Collection<int, array{ticket: string, tecnico: string}>
      */
@@ -91,31 +91,16 @@ class AsignacionService
             ->orderBy('creado_en')->get();
 
         $resultado = collect();
-        $cargas = [];
         foreach ($pendientes as $ticket) {
-            $cargas[$ticket->organizacion_id] ??= $this->cargaTecnicos($ticket->organizacion_id);
-            if ($cargas[$ticket->organizacion_id]->isEmpty()) {
+            // La carga se recalcula en cada vuelta: incluye lo recién asignado
+            $elegido = $this->cargas->elegir($ticket->organizacion_id);
+            if (! $elegido) {
                 continue;
             }
-            $elegido = $cargas[$ticket->organizacion_id]->sortBy([['carga', 'asc'], ['nombre', 'asc']])->first();
-            $this->tickets->asignar($ticket, $elegido['id'], $usuario, 'Autoasignación por menor carga activa');
-            $cargas[$ticket->organizacion_id] = $cargas[$ticket->organizacion_id]
-                ->map(fn ($t) => $t['id'] === $elegido['id'] ? [...$t, 'carga' => $t['carga'] + 1] : $t);
+            $this->tickets->asignar($ticket, $elegido['id'], $usuario, "Autoasignación por menor carga ({$elegido['activos']} tickets activos)");
             $resultado->push(['ticket' => $ticket->codigo, 'tecnico' => $elegido['nombre']]);
         }
 
         return $resultado;
-    }
-
-    /** @return Collection<int, array{id: int, nombre: string, carga: int}> */
-    public function cargaTecnicos(int $organizacionId): Collection
-    {
-        return Usuario::sinFiltroOrganizacion()
-            ->where('organizacion_id', $organizacionId)->where('estado', 'activo')
-            ->whereHas('rolesOrganizacion', fn ($q) => $q->where('codigo', Rol::Tecnico->value))
-            ->withCount(['ticketsAsignados as carga' => fn ($q) => $q->withoutGlobalScopes()
-                ->whereIn('estado', [EstadoTicket::Abierto, EstadoTicket::Asignado, EstadoTicket::EnProgreso, EstadoTicket::EnEspera])])
-            ->get()
-            ->map(fn (Usuario $u) => ['id' => $u->id, 'nombre' => $u->nombre, 'carga' => (int) $u->carga]);
     }
 }

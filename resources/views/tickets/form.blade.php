@@ -15,7 +15,7 @@
   :icono="$simple ? 'send' : 'save'"
   :archivos="! $ticket->exists">
   @if ($simple)
-    <p class="form-hint form-group full form-intro">Cuéntanos qué pasa. Te avisaremos cuando un técnico lo tome y podrás seguir el avance desde «Mis tickets».</p>
+    <p class="form-hint form-intro" style="grid-column:1/-1">Cuéntanos qué pasa. Te avisaremos cuando un técnico lo tome y podrás seguir el avance desde «Mis tickets».</p>
   @endif
   @if ($organizaciones)
     <x-form-field nombre="organizacion_id" etiqueta="Organización" :opciones="$organizaciones" vacio="Selecciona una organización" requerido completo />

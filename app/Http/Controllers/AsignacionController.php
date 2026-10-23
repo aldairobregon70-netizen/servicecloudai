@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EstadoTicket;
 use App\Models\Ticket;
 use App\Services\AsignacionService;
+use App\Services\CargaTecnicos;
 use App\Services\SlaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,7 @@ use Illuminate\View\View;
 
 class AsignacionController extends Controller
 {
-    public function __construct(private AsignacionService $asignaciones, private SlaService $sla) {}
+    public function __construct(private AsignacionService $asignaciones, private SlaService $sla, private CargaTecnicos $cargas) {}
 
     public function index(Request $request): View
     {
@@ -32,6 +33,10 @@ class AsignacionController extends Controller
                 'tickets' => $tickets->filter(fn (Ticket $t) => AsignacionService::columnaDe($t) === $clave)->values(),
             ]),
             'sla' => $this->sla,
+            // Carga del equipo para quien asigna (de su organización)
+            'equipo' => $request->user()->can('asignar', Ticket::class) && $request->user()->organizacion_id
+                ? $this->cargas->de($request->user()->organizacion_id) : null,
+            'configuracionCarga' => $request->user()->organizacion_id ? $this->cargas->configuracion($request->user()->organizacion_id) : null,
         ]);
     }
 

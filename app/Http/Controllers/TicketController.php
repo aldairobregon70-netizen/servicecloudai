@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\EstadoTicket;
 use App\Enums\Impacto;
 use App\Enums\Rol;
+use App\Enums\TipoNotificacion;
 use App\Enums\TipoTicket;
 use App\Enums\Urgencia;
 use App\Http\Requests\CambiarEstadoTicketRequest;
@@ -22,7 +23,9 @@ use App\Models\TicketAdjunto;
 use App\Models\Usuario;
 use App\Services\ActividadTicket;
 use App\Services\AI\ClasificadorTickets;
+use App\Services\CargaTecnicos;
 use App\Services\FlujoTicket;
+use App\Services\NotificacionService;
 use App\Services\SlaService;
 use App\Services\TicketService;
 use App\Support\Csv;
@@ -32,6 +35,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -96,11 +101,14 @@ class TicketController extends Controller
             $analisis->logs()->update(['ticket_id' => $ticket->id]);
         }
 
+        $tecnico = $ticket->tecnico()->value('nombre');
         if (DashboardController::esSolicitante($request->user())) {
-            return $this->guardado(route('tickets.show', $ticket), ['¡Ticket enviado!', "{$ticket->codigo} quedó registrado. Te avisaremos cuando un técnico lo tome."]);
+            return $this->guardado(route('tickets.show', $ticket), ['¡Ticket enviado!', $tecnico
+                ? "{$ticket->codigo} quedó registrado y {$tecnico} ya lo tiene en su cola."
+                : "{$ticket->codigo} quedó registrado. Te avisaremos cuando un técnico lo tome."]);
         }
 
-        return $this->guardado(route('tickets.show', $ticket), ['Ticket creado', "{$ticket->codigo} · prioridad {$ticket->prioridad->label()}, vence {$ticket->vencimiento_resolucion?->format('d/m/Y H:i')}."]);
+        return $this->guardado(route('tickets.show', $ticket), ['Ticket creado', "{$ticket->codigo} · prioridad {$ticket->prioridad->label()}".($tecnico ? ", asignado a {$tecnico}" : ', sin técnico').", vence {$ticket->vencimiento_resolucion?->format('d/m/Y H:i')}."]);
     }
 
     public function show(Request $request, Ticket $ticket, FlujoTicket $flujo): View
@@ -160,6 +168,53 @@ class TicketController extends Controller
         };
 
         return $this->guardado(route('tickets.show', $ticket), ["Ticket {$nuevo->label()}", $detalle]);
+    }
+
+    /** GET /tickets/{ticket}/reasignar: modal con la carga de cada técnico y uno recomendado. */
+    public function formularioReasignar(Ticket $ticket, CargaTecnicos $cargas): View
+    {
+        $this->authorize('asignar', $ticket);
+
+        return $this->vistaModal('tickets.reasignar', [
+            'ticket' => $ticket->load('tecnico:id,nombre'),
+            'tecnicos' => $cargas->de($ticket->organizacion_id),
+            'recomendado' => $cargas->elegir($ticket->organizacion_id, $ticket->tecnico_id),
+            'maximo' => $cargas->configuracion($ticket->organizacion_id)['maximo'],
+        ]);
+    }
+
+    /** PATCH /tickets/{ticket}/reasignar */
+    public function reasignar(Request $request, Ticket $ticket, CargaTecnicos $cargas): JsonResponse|RedirectResponse
+    {
+        $this->authorize('asignar', $ticket);
+        abort_unless($ticket->estado->esActivo(), 422, 'Solo se reasignan tickets activos.');
+        $datos = $request->validate([
+            'tecnico_id' => ['required', 'integer', Rule::in($cargas->de($ticket->organizacion_id)->pluck('id'))],
+            'motivo' => ['nullable', 'string', 'max:500'],
+        ], ['tecnico_id.required' => 'Elige el técnico que atenderá el ticket.', 'tecnico_id.in' => 'Elige un técnico activo de la organización.']);
+
+        $anterior = $ticket->tecnico?->nombre;
+        $this->tickets->asignar($ticket, (int) $datos['tecnico_id'], $request->user(), filled($datos['motivo'] ?? null)
+            ? 'Reasignación: '.$datos['motivo']
+            : ($anterior ? 'Reasignación por supervisor' : 'Asignación por supervisor'));
+        $nuevo = $ticket->fresh('tecnico')->tecnico->nombre;
+
+        return $this->guardado(route('tickets.show', $ticket), [$anterior ? 'Ticket reasignado' : 'Ticket asignado', $anterior ? "{$ticket->codigo} pasó de {$anterior} a {$nuevo}. Ambos fueron notificados." : "{$nuevo} atenderá {$ticket->codigo}."]);
+    }
+
+    /** POST /tickets/{ticket}/solicitar-reasignacion: el técnico avisa a la gestión que no puede atenderlo. */
+    public function solicitarReasignacion(Request $request, Ticket $ticket, NotificacionService $notificaciones): JsonResponse|RedirectResponse
+    {
+        $this->authorize('solicitarReasignacion', $ticket);
+        $datos = $request->validate(['motivo' => ['required', 'string', 'max:500']], ['motivo.required' => 'Cuéntale al supervisor por qué necesitas reasignarlo.']);
+        $usuario = $request->user();
+
+        $this->tickets->comentar($ticket, $usuario, 'Solicitó reasignación: '.$datos['motivo'], true);
+        foreach ($notificaciones->gestoresDe($ticket->organizacion_id) as $gestor) {
+            $notificaciones->notificar($gestor, 'Piden reasignar un ticket', "{$usuario->nombre} pide reasignar {$ticket->codigo}: «".Str::limit($datos['motivo'], 120).'»', TipoNotificacion::Asignacion, $ticket);
+        }
+
+        return $this->guardado(route('tickets.show', $ticket), ['Solicitud enviada', 'Avisamos a tu supervisor. Sigues a cargo hasta que lo reasigne.']);
     }
 
     /** PATCH /tickets/{ticket}/confirmacion: el solicitante confirma la solución o indica que sigue fallando. */

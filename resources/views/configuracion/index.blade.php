@@ -33,12 +33,21 @@
         <x-setting-row titulo="Correo electrónico" texto="Alertas críticas y resúmenes por email." nombre="email_activo" :activo="$preferencias->email_activo" />
         <x-setting-row titulo="Notificaciones push" texto="Alertas en la aplicación y navegador." nombre="push_activo" :activo="$preferencias->push_activo" />
         <x-setting-row titulo="Notificaciones en la app" texto="Campana y centro de notificaciones." nombre="in_app_activo" :activo="$preferencias->in_app_activo" />
-        <x-setting-row titulo="Tema oscuro SaaS" texto="Identidad visual tecnológica principal." fijo />
+        <x-setting-row titulo="Tema claro" texto="Blancos y grises con acento azul." fijo />
       </div>
 
       @if ($config)
         <div class="card settings-card">
-          <div class="card-title"><h3>Acuerdos de servicio</h3><span>{{ $organizacion->razon_social }}</span></div>
+          <div class="card-title"><h3>Atención y asignación</h3><span>{{ $organizacion->razon_social }}</span></div>
+          <x-setting-row titulo="Asignación automática por carga" texto="Cada ticket nuevo se asigna al técnico con menos tickets activos. El supervisor puede reasignarlo." nombre="asignacion_automatica" :activo="$config->configuracion['asignacion_automatica'] ?? true" />
+          <div class="settings-row">
+            <div><b>Límite de carga por técnico</b><span>Desde este número de tickets activos se marca "Alta carga" y se avisa al supervisor.</span></div>
+            <select class="field" name="carga_maxima" style="min-width:110px">
+              @foreach ([3, 4, 5, 6, 8, 10, 12, 15, 20] as $limite)
+                <option value="{{ $limite }}" @selected(($config->configuracion['carga_maxima'] ?? App\Services\CargaTecnicos::MAXIMO_POR_DEFECTO) == $limite)>{{ $limite }} tickets</option>
+              @endforeach
+            </select>
+          </div>
           <div class="settings-row">
             <div><b>Política SLA por defecto</b><span>Se usa cuando el servicio o el contrato no tienen política.</span></div>
             <select class="field" name="politica_sla_defecto_id" style="min-width:150px">

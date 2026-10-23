@@ -24,7 +24,7 @@ class ActividadTicket
                 'icono' => match ($h->campo) {
                     'creacion' => 'ticket-check', 'estado' => 'refresh-cw', 'tecnico' => 'user-check', 'prioridad' => 'flag', default => 'pencil',
                 },
-                'titulo' => $h->usuario?->nombre ?? 'Sistema',
+                'titulo' => $h->usuario?->nombre ?? 'ServiceCloud · automático',
                 'texto' => $this->describir($h->campo, $h->valor_anterior, $h->valor_nuevo).' · '.Formato::fechaHora($h->fecha),
                 'fecha' => $h->fecha,
             ]);

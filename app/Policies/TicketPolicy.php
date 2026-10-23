@@ -62,6 +62,12 @@ class TicketPolicy
             || ($usuario->tieneRol(Rol::Tecnico) && ($ticket->tecnico_id === $usuario->id || $ticket->tecnico_id === null));
     }
 
+    /** El técnico a cargo pide a la gestión que lo reasigne (p. ej. por sobrecarga). */
+    public function solicitarReasignacion(Usuario $usuario, Ticket $ticket): bool
+    {
+        return $usuario->tieneRol(Rol::Tecnico) && $ticket->tecnico_id === $usuario->id && $ticket->estado->esActivo();
+    }
+
     /** Quien reportó el ticket confirma la solución (cierra) o indica que sigue fallando (reabre). */
     public function responderSolucion(Usuario $usuario, Ticket $ticket): bool
     {

@@ -35,7 +35,8 @@ class TicketsTest extends TestCase
 
         $this->assertMatchesRegularExpression('/^TKT-'.now()->year.'-\d{5}$/', $ticket->codigo);
         $this->assertSame('alta', $ticket->prioridad->value); // alto × media
-        $this->assertSame('abierto', $ticket->estado->value);
+        $this->assertSame('asignado', $ticket->estado->value); // asignación automática por carga
+        $this->assertNotNull($ticket->tecnico_id);
         $this->assertSame($this->usuario('lucia.vega@andesmarket.pe')->id, $ticket->solicitante_id);
         $this->assertSame('Gold', $ticket->politicaSla()->withoutGlobalScopes()->first()->nombre); // política del servicio ERP
         // Gold · Alta = 30 min respuesta / 240 min resolución (24x7)

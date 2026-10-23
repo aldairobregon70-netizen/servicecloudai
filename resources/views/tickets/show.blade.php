@@ -13,7 +13,9 @@
 
     // Botones del "siguiente paso": [texto, ícono, clase, tipo, destino]
     $botones = [
-        'asignar' => ['Asignar técnico', 'user-plus', 'btn-primary', 'modal', route('tickets.edit', $ticket)],
+        'asignar' => ['Asignar técnico', 'user-plus', 'btn-primary', 'modal', route('tickets.reasignar.form', $ticket)],
+        'reasignar' => ['Reasignar', 'users', 'btn-secondary', 'modal', route('tickets.reasignar.form', $ticket)],
+        'solicitar_reasignacion' => ['Pedir reasignación', 'hand', 'btn-secondary', 'plantilla', '#tplSolicitarReasignacion'],
         'iniciar' => ['Iniciar atención', 'play', 'btn-primary', 'estado', 'en_progreso'],
         'reanudar' => ['Reanudar atención', 'play', 'btn-primary', 'estado', 'en_progreso'],
         'resolver' => ['Marcar como resuelto', 'circle-check-big', 'btn-primary', 'plantilla', '#tplResolver'],
@@ -105,7 +107,7 @@
                     <button class="btn {{ $clase }}" type="button" data-modal-template="{{ $destino }}" data-accion-ticket="{{ $accion }}"><i data-lucide="{{ $icono }}"></i> {{ $texto }}</button>
                     @break
                   @case('modal')
-                    <button class="btn {{ $clase }}" type="button" data-modal-url="{{ $destino }}" data-modal-titulo="Asignar técnico" data-accion-ticket="{{ $accion }}"><i data-lucide="{{ $icono }}"></i> {{ $texto }}</button>
+                    <button class="btn {{ $clase }}" type="button" data-modal-url="{{ $destino }}" data-modal-titulo="{{ $texto }}" data-accion-ticket="{{ $accion }}"><i data-lucide="{{ $icono }}"></i> {{ $texto }}</button>
                     @break
                 @endswitch
               @endforeach
@@ -392,6 +394,26 @@
         <div data-modal-footer>
           <button class="btn btn-secondary" type="button" data-cerrar-modal>Volver</button>
           <button class="btn btn-danger" type="submit" form="formCancelar"><i data-lucide="circle-slash"></i> Cancelar ticket</button>
+        </div>
+      </template>
+    @endcan
+
+    @can('solicitarReasignacion', $ticket)
+      <template id="tplSolicitarReasignacion" data-titulo="Pedir reasignación">
+        <div data-modal-body>
+          <form id="formSolicitarReasignacion" class="form-grid" method="POST" action="{{ route('tickets.solicitar-reasignacion', $ticket) }}" data-ajax>
+            @csrf
+            <div class="form-group full" data-campo="motivo">
+              <label for="f_motivo_reasignacion">¿Por qué necesitas que lo reasignen?</label>
+              <textarea class="form-control" id="f_motivo_reasignacion" name="motivo" required placeholder="Ej.: Tengo 9 tickets activos y 3 críticos; no llegaré al plazo de este."></textarea>
+              <span class="form-hint">Tu supervisor recibe el aviso con la carga del equipo y decide a quién pasarlo. Mientras tanto sigues a cargo.</span>
+              <span class="form-error" hidden></span>
+            </div>
+          </form>
+        </div>
+        <div data-modal-footer>
+          <button class="btn btn-secondary" type="button" data-cerrar-modal>Cancelar</button>
+          <button class="btn btn-primary" type="submit" form="formSolicitarReasignacion"><i data-lucide="send"></i> Enviar solicitud</button>
         </div>
       </template>
     @endcan

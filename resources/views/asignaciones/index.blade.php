@@ -5,10 +5,41 @@
     @can('asignar', App\Models\Ticket::class)
       <form method="POST" action="{{ route('asignaciones.autoasignar') }}" class="inline-form">
         @csrf
-        <button class="btn btn-primary" id="autoAssign" type="submit"><i data-lucide="wand-sparkles"></i> Autoasignar con IA</button>
+        <button class="btn btn-primary" id="autoAssign" type="submit"><i data-lucide="wand-sparkles"></i> Asignar pendientes por carga</button>
       </form>
     @endcan
   </x-page-header>
+
+  @if ($equipo !== null)
+    <div class="card card-pad carga-equipo" id="cargaEquipo">
+      <div class="card-title">
+        <div><h3>Carga del equipo</h3><span>
+          @if ($configuracionCarga['automatica'])
+            Los tickets nuevos se asignan solos al técnico con menos tickets activos · límite sugerido {{ $configuracionCarga['maximo'] }}
+          @else
+            Asignación automática desactivada: asigna los tickets nuevos manualmente
+          @endif
+        </span></div>
+        @can('configurar-organizacion')<a class="table-link" href="{{ route('configuracion.index') }}">Ajustar reglas</a>@endcan
+      </div>
+      <div class="carga-lista">
+        @forelse ($equipo as $tecnico)
+          @php($porcentaje = min(100, (int) round($tecnico['activos'] / max(1, $configuracionCarga['maximo']) * 100)))
+          <div class="carga-item {{ $tecnico['alta_carga'] ? 'is-alta' : '' }}">
+            <div class="opcion-tecnico-avatar">{{ $tecnico['iniciales'] }}</div>
+            <div class="carga-info">
+              <b>{{ $tecnico['nombre'] }}</b>
+              <span class="barra-carga {{ $tecnico['alta_carga'] ? 'is-alta' : ($porcentaje >= 60 ? 'is-media' : '') }}"><i style="width:{{ $porcentaje }}%"></i></span>
+              <small>{{ $tecnico['activos'] }} activos · {{ $tecnico['urgentes'] }} urgentes</small>
+            </div>
+            @if ($tecnico['alta_carga'])<span class="badge badge-red">Alta carga</span>@elseif ($tecnico['activos'] === 0)<span class="badge badge-green">Disponible</span>@endif
+          </div>
+        @empty
+          <p class="form-hint">No hay técnicos activos en la organización.</p>
+        @endforelse
+      </div>
+    </div>
+  @endif
 
   <div class="kanban" id="kanban" data-url="{{ url('/asignaciones') }}">
     @foreach ($columnas as $clave => $columna)
@@ -31,7 +62,12 @@
                     @default SLA activo · {{ $estadoSla['texto'] }}
                   @endswitch
                 </span>
-                <div class="mini-avatar" title="{{ $ticket->tecnico?->nombre ?? 'Sin asignar' }}">{{ $ticket->tecnico?->iniciales() ?? '--' }}</div>
+                <div class="kanban-acciones">
+                  @can('asignar', $ticket)
+                    <button class="icon-mini" type="button" title="{{ $ticket->tecnico ? 'Reasignar' : 'Asignar' }}" data-modal-url="{{ route('tickets.reasignar.form', $ticket) }}" data-modal-titulo="{{ $ticket->tecnico ? 'Reasignar' : 'Asignar' }} {{ $ticket->codigo }}"><i data-lucide="{{ $ticket->tecnico ? 'users' : 'user-plus' }}"></i></button>
+                  @endcan
+                  <div class="mini-avatar" title="{{ $ticket->tecnico?->nombre ?? 'Sin asignar' }}">{{ $ticket->tecnico?->iniciales() ?? '--' }}</div>
+                </div>
               </div>
             </div>
           @endforeach
@@ -77,7 +113,7 @@
         $$('.kanban-card').forEach(card => {
           card.addEventListener('dragstart', () => { arrastrado = card.dataset.id; card.style.opacity = '.45'; });
           card.addEventListener('dragend', () => { card.style.opacity = '1'; arrastrado = null; $$('.kanban-col').forEach(c => c.classList.remove('drag-over')); });
-          card.addEventListener('click', () => { window.location.href = card.dataset.href; });
+          card.addEventListener('click', e => { if (!e.target.closest('button')) window.location.href = card.dataset.href; });
         });
         $$('.kanban-col').forEach(col => {
           col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });

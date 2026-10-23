@@ -65,6 +65,9 @@ Route::middleware('auth')->group(function () {
         Route::resource('tickets', TicketController::class)->except('destroy');
         Route::patch('/tickets/{ticket}/estado', 'cambiarEstado')->name('tickets.estado');
         Route::patch('/tickets/{ticket}/confirmacion', 'responderSolucion')->name('tickets.confirmacion');
+        Route::get('/tickets/{ticket}/reasignar', 'formularioReasignar')->name('tickets.reasignar.form');
+        Route::patch('/tickets/{ticket}/reasignar', 'reasignar')->name('tickets.reasignar');
+        Route::post('/tickets/{ticket}/solicitar-reasignacion', 'solicitarReasignacion')->name('tickets.solicitar-reasignacion');
         Route::post('/tickets/{ticket}/comentarios', 'comentar')->name('tickets.comentarios');
         Route::post('/tickets/{ticket}/recomendacion', 'aplicarRecomendacion')->name('tickets.recomendacion');
         Route::post('/tickets/{ticket}/clasificar', 'clasificar')->middleware('throttle:ia')->name('tickets.clasificar');

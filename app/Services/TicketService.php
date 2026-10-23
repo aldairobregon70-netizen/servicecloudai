@@ -78,12 +78,7 @@ class TicketService
         if ($ticket->tecnico_id) {
             $this->notificaciones->notificar($ticket->tecnico_id, 'Ticket asignado', "Se te asignó {$ticket->codigo}: {$ticket->titulo}", TipoNotificacion::Asignacion, $ticket);
         } else {
-            // Gestión: un ticket nuevo sin técnico requiere acción
-            foreach ($this->notificaciones->gestoresDe($ticket->organizacion_id) as $gestor) {
-                if ($gestor->id !== $autor->id) {
-                    $this->notificaciones->notificar($gestor, 'Nuevo ticket sin asignar', "{$ticket->codigo}: {$ticket->titulo}", TipoNotificacion::Ticket, $ticket);
-                }
-            }
+            $this->asignarAutomaticamente($ticket, $autor);
         }
         if ($ticket->solicitante_id !== $autor->id) {
             $this->notificaciones->notificar($ticket->solicitante_id, 'Registramos tu ticket', "{$autor->nombre} registró {$ticket->codigo} a tu nombre: {$ticket->titulo}", TipoNotificacion::Ticket, $ticket);
@@ -163,7 +158,37 @@ class TicketService
 
     // ------------------------------------------------------------------ asignación
 
-    public function asignar(Ticket $ticket, ?int $tecnicoId, Usuario $usuario, string $motivo = 'Asignación manual'): void
+    /**
+     * Ticket nuevo sin técnico: se asigna al técnico con menor carga (si la organización lo tiene activo).
+     * Avisa a supervisores y administradores cuando no hay técnicos o el equipo está al límite.
+     */
+    private function asignarAutomaticamente(Ticket $ticket, Usuario $autor): void
+    {
+        $cargas = app(CargaTecnicos::class);
+        $config = $cargas->configuracion($ticket->organizacion_id);
+        $elegido = $config['automatica'] ? $cargas->elegir($ticket->organizacion_id) : null;
+
+        if ($elegido) {
+            $this->asignar($ticket, $elegido['id'], null, "Asignación automática por menor carga ({$elegido['activos']} tickets activos)");
+        }
+
+        [$titulo, $mensaje] = match (true) {
+            ! $elegido && $config['automatica'] => ['Nuevo ticket sin asignar', "No hay técnicos activos para {$ticket->codigo}: {$ticket->titulo}"],
+            ! $elegido => ['Nuevo ticket sin asignar', "{$ticket->codigo}: {$ticket->titulo}"],
+            $elegido['activos'] >= $config['maximo'] => ['Equipo al límite de carga', "{$ticket->codigo} se asignó a {$elegido['nombre']}, que ya tenía {$elegido['activos']} tickets activos. Considera reasignar."],
+            default => [null, null],
+        };
+        if ($titulo) {
+            foreach ($this->notificaciones->gestoresDe($ticket->organizacion_id) as $gestor) {
+                if ($gestor->id !== $autor->id) {
+                    $this->notificaciones->notificar($gestor, $titulo, $mensaje, TipoNotificacion::Asignacion, $ticket);
+                }
+            }
+        }
+    }
+
+    /** @param  Usuario|null  $usuario  null = asignación automática del sistema */
+    public function asignar(Ticket $ticket, ?int $tecnicoId, ?Usuario $usuario, string $motivo = 'Asignación manual'): void
     {
         $anterior = $ticket->tecnico_id;
         if ((int) $anterior === (int) $tecnicoId) {
@@ -185,20 +210,27 @@ class TicketService
             }
         });
 
-        if ($tecnicoId && $tecnicoId !== $usuario->id) {
-            $this->notificaciones->notificar($tecnicoId, 'Ticket asignado', "Se te asignó {$ticket->codigo}: {$ticket->titulo}", TipoNotificacion::Asignacion, $ticket);
+        $nombre = $tecnicoId ? Usuario::sinFiltroOrganizacion()->whereKey($tecnicoId)->value('nombre') : null;
+        if ($tecnicoId && $tecnicoId !== $usuario?->id) {
+            $mensaje = $anterior ? "Se te reasignó {$ticket->codigo}: {$ticket->titulo}" : "Se te asignó {$ticket->codigo}: {$ticket->titulo}";
+            $this->notificaciones->notificar($tecnicoId, $anterior ? 'Ticket reasignado a ti' : 'Ticket asignado', $mensaje, TipoNotificacion::Asignacion, $ticket);
         }
-        if ($tecnicoId && $ticket->solicitante_id !== $usuario->id) {
-            $nombre = Usuario::sinFiltroOrganizacion()->whereKey($tecnicoId)->value('nombre');
-            $this->notificaciones->notificar($ticket->solicitante_id, 'Tu ticket ya tiene técnico', "{$nombre} revisará {$ticket->codigo}.", TipoNotificacion::Ticket, $ticket);
+        if ($anterior && $tecnicoId && $anterior !== $usuario?->id) {
+            $this->notificaciones->notificar($anterior, 'Ticket reasignado', "{$ticket->codigo} ahora lo atiende {$nombre}.", TipoNotificacion::Asignacion, $ticket);
+        }
+        if ($tecnicoId && $ticket->solicitante_id !== $usuario?->id) {
+            [$titulo, $mensaje] = $anterior
+                ? ['Cambió el técnico de tu ticket', "{$nombre} continuará con {$ticket->codigo}."]
+                : ['Tu ticket ya tiene técnico', "{$nombre} revisará {$ticket->codigo}."];
+            $this->notificaciones->notificar($ticket->solicitante_id, $titulo, $mensaje, TipoNotificacion::Ticket, $ticket);
         }
     }
 
-    private function registrarAsignacion(Ticket $ticket, ?int $anterior, ?int $nuevo, Usuario $usuario, string $motivo): void
+    private function registrarAsignacion(Ticket $ticket, ?int $anterior, ?int $nuevo, ?Usuario $usuario, string $motivo): void
     {
         TicketAsignacion::create([
             'ticket_id' => $ticket->id, 'tecnico_anterior_id' => $anterior, 'tecnico_nuevo_id' => $nuevo,
-            'equipo_id' => $ticket->equipo_id, 'asignado_por_id' => $usuario->id, 'motivo' => $motivo, 'fecha' => now(),
+            'equipo_id' => $ticket->equipo_id, 'asignado_por_id' => $usuario?->id, 'motivo' => $motivo, 'fecha' => now(),
         ]);
         $nombre = $nuevo ? Usuario::sinFiltroOrganizacion()->whereKey($nuevo)->value('nombre') : 'Sin asignar';
         $this->historial($ticket, $usuario, 'tecnico', $anterior ? Usuario::sinFiltroOrganizacion()->whereKey($anterior)->value('nombre') : null, $nombre);
