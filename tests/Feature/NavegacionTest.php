@@ -93,8 +93,13 @@ class NavegacionTest extends TestCase
 
     public function test_dashboard_carga_para_cada_rol(): void
     {
-        foreach (['admin@servicecloud.ai', 'rosa.villanueva@andesmarket.pe', 'ana.torres@andesmarket.pe', 'maria.pena@andesmarket.pe', 'lucia.vega@andesmarket.pe'] as $email) {
+        foreach (['admin@servicecloud.ai', 'rosa.villanueva@andesmarket.pe', 'ana.torres@andesmarket.pe', 'maria.pena@andesmarket.pe'] as $email) {
             $this->como($email)->get('/')->assertOk()->assertSee('Tickets abiertos');
         }
+        // El solicitante ve su portal: el avance de sus tickets, sin métricas operativas
+        $this->como('lucia.vega@andesmarket.pe')->get('/')->assertOk()
+            ->assertSee('Mis tickets activos')->assertSee('TKT-2026-00452')->assertDontSee('Tickets por prioridad');
+        // El técnico ve su cola de trabajo con el siguiente paso de cada ticket
+        $this->como('maria.pena@andesmarket.pe')->get('/')->assertSee('Mi cola de trabajo')->assertSee('TKT-2026-00452');
     }
 }

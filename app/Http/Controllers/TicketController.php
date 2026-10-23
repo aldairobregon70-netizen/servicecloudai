@@ -14,6 +14,7 @@ use App\Models\Activo;
 use App\Models\AnalisisLogIa;
 use App\Models\CategoriaTicket;
 use App\Models\ClasificacionIa;
+use App\Models\Notificacion;
 use App\Models\Organizacion;
 use App\Models\Servicio;
 use App\Models\Ticket;
@@ -21,6 +22,7 @@ use App\Models\TicketAdjunto;
 use App\Models\Usuario;
 use App\Services\ActividadTicket;
 use App\Services\AI\ClasificadorTickets;
+use App\Services\FlujoTicket;
 use App\Services\SlaService;
 use App\Services\TicketService;
 use App\Support\Csv;
@@ -44,6 +46,8 @@ class TicketController extends Controller
         return view('tickets.index', [
             'tickets' => $this->consulta($request)->paginate(config('servicecloud.paginacion'))->withQueryString(),
             'sla' => $this->sla,
+            'flujo' => app(FlujoTicket::class),
+            'esSolicitante' => DashboardController::esSolicitante($request->user()),
         ]);
     }
 
@@ -92,27 +96,40 @@ class TicketController extends Controller
             $analisis->logs()->update(['ticket_id' => $ticket->id]);
         }
 
+        if (DashboardController::esSolicitante($request->user())) {
+            return $this->guardado(route('tickets.show', $ticket), ['¡Ticket enviado!', "{$ticket->codigo} quedó registrado. Te avisaremos cuando un técnico lo tome."]);
+        }
+
         return $this->guardado(route('tickets.show', $ticket), ['Ticket creado', "{$ticket->codigo} · prioridad {$ticket->prioridad->label()}, vence {$ticket->vencimiento_resolucion?->format('d/m/Y H:i')}."]);
     }
 
-    public function show(Request $request, Ticket $ticket): View
+    public function show(Request $request, Ticket $ticket, FlujoTicket $flujo): View
     {
         $this->authorize('view', $ticket);
         $ticket->load(['organizacion', 'solicitante', 'tecnico', 'servicio', 'activo', 'categoriaTicket', 'sla.regla', 'politicaSla', 'adjuntos', 'incidencia', 'problemas']);
         $usuario = $request->user();
+        $verInternos = $usuario->can('verInternos', $ticket);
+        // Al abrir el ticket, sus avisos dejan de contar como pendientes en la campana
+        Notificacion::de($usuario)->where('ticket_id', $ticket->id)->noLeidas()->update(['leida_en' => now()]);
 
         return view('tickets.show', [
             'ticket' => $ticket,
             'estadoSla' => $this->sla->estadoSla($ticket),
-            'actividad' => app(ActividadTicket::class)->para($ticket, $usuario),
+            'flujo' => $flujo,
+            'pasos' => $flujo->pasos($ticket),
+            // Vista simplificada para quien reportó (no ve IA ni datos internos)
+            'vistaSolicitante' => ! $verInternos,
+            'mensajeSolicitante' => $flujo->mensajeSolicitante($ticket),
+            'siguientePaso' => $usuario->can('update', $ticket) ? $flujo->siguientePaso($ticket, $usuario) : null,
+            'conversacion' => $ticket->comentarios()->with('autor:id,nombre')
+                ->when(! $verInternos, fn ($q) => $q->where('es_interno', false))
+                ->orderBy('creado_en')->orderBy('id')->get(),
+            'actividad' => app(ActividadTicket::class)->para($ticket, $usuario, conComentarios: false),
             'clasificacion' => $ticket->clasificaciones()->latest('creado_en')->latest('id')->first(),
             // Las fuentes internas no se muestran a quien no puede verlas (solicitante)
             'recomendacion' => $ticket->recomendaciones()->latest('creado_en')->latest('id')
                 ->with(['fuentes' => fn ($q) => $q->when(! $usuario->can('verInternos', $ticket), fn ($w) => $w->where('visibilidad', '!=', 'interna'))])
                 ->first(),
-            'estadosPosibles' => collect([$ticket->estado, ...$ticket->estado->transiciones()])
-                ->filter(fn (EstadoTicket $e) => $e === $ticket->estado || $ticket->tecnico_id || ! in_array($e, [EstadoTicket::Asignado, EstadoTicket::EnProgreso], true))
-                ->mapWithKeys(fn (EstadoTicket $e) => [$e->value => $e->label()])->all(),
         ]);
     }
 
@@ -133,9 +150,35 @@ class TicketController extends Controller
     public function cambiarEstado(CambiarEstadoTicketRequest $request, Ticket $ticket): JsonResponse|RedirectResponse
     {
         $nuevo = EstadoTicket::from($request->string('estado'));
-        $this->tickets->cambiarEstado($ticket, $nuevo, $request->user(), $request->input('solucion'));
+        $this->tickets->cambiarEstado($ticket, $nuevo, $request->user(), $request->input('solucion'), $request->input('comentario'));
 
-        return $this->guardado(route('tickets.show', $ticket), ['Estado actualizado', "{$ticket->codigo} ahora está en \"{$nuevo->label()}\"."]);
+        $detalle = match ($nuevo) {
+            EstadoTicket::EnProgreso => 'Se avisó al usuario que su ticket está en atención.',
+            EstadoTicket::EnEspera => 'Se envió tu mensaje al usuario; el SLA queda en pausa hasta que responda.',
+            EstadoTicket::Resuelto => 'Se pidió al usuario que confirme la solución.',
+            default => "{$ticket->codigo} ahora está en \"{$nuevo->label()}\".",
+        };
+
+        return $this->guardado(route('tickets.show', $ticket), ["Ticket {$nuevo->label()}", $detalle]);
+    }
+
+    /** PATCH /tickets/{ticket}/confirmacion: el solicitante confirma la solución o indica que sigue fallando. */
+    public function responderSolucion(Request $request, Ticket $ticket): JsonResponse|RedirectResponse
+    {
+        $this->authorize('responderSolucion', $ticket);
+        $datos = $request->validate([
+            'decision' => ['required', 'in:confirmar,reabrir'],
+            'comentario' => ['nullable', 'required_if:decision,reabrir', 'string', 'max:5000'],
+        ], ['comentario.required_if' => 'Cuéntanos qué sigue fallando para que el técnico lo revise.']);
+
+        if ($datos['decision'] === 'confirmar') {
+            $this->tickets->cambiarEstado($ticket, EstadoTicket::Cerrado, $request->user(), comentario: $datos['comentario'] ?? null);
+
+            return $this->guardado(route('tickets.show', $ticket), ['¡Gracias por confirmar!', "{$ticket->codigo} quedó cerrado."]);
+        }
+        $this->tickets->cambiarEstado($ticket, EstadoTicket::EnProgreso, $request->user(), comentario: $datos['comentario']);
+
+        return $this->guardado(route('tickets.show', $ticket), ['Ticket reabierto', 'Avisamos al técnico que el problema continúa.']);
     }
 
     public function comentar(ComentarTicketRequest $request, Ticket $ticket): JsonResponse|RedirectResponse
@@ -149,7 +192,12 @@ class TicketController extends Controller
             }
         });
 
-        return $this->guardado(route('tickets.show', $ticket), ['Nota agregada', 'Se añadió '.($request->esInterno() ? 'una nota interna' : 'un comentario')." a {$ticket->codigo}."]);
+        if ($request->esInterno()) {
+            return $this->guardado(route('tickets.show', $ticket), ['Nota interna guardada', 'Solo el equipo de soporte puede verla.']);
+        }
+        $destinatario = $request->user()->id === $ticket->solicitante_id ? 'el técnico' : 'el usuario';
+
+        return $this->guardado(route('tickets.show', $ticket), ['Mensaje enviado', "Le avisamos a {$destinatario} en {$ticket->codigo}."]);
     }
 
     /** POST /tickets/{ticket}/clasificar: analiza (o reanaliza) el ticket con IA. */

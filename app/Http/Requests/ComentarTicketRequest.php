@@ -28,11 +28,11 @@ class ComentarTicketRequest extends FormRequest
 
     public function attributes(): array
     {
-        return ['contenido' => 'nota'];
+        return ['contenido' => 'mensaje'];
     }
 
     public function messages(): array
     {
-        return ['contenido.required_without' => 'Escribe una nota o adjunta un archivo.', 'adjunto.max' => 'El adjunto no puede superar los 10 MB.'];
+        return ['contenido.required_without' => 'Escribe un mensaje o adjunta un archivo.', 'adjunto.max' => 'El adjunto no puede superar los 10 MB.'];
     }
 }

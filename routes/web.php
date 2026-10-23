@@ -64,6 +64,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/tickets/exportar', 'exportar')->name('tickets.exportar');
         Route::resource('tickets', TicketController::class)->except('destroy');
         Route::patch('/tickets/{ticket}/estado', 'cambiarEstado')->name('tickets.estado');
+        Route::patch('/tickets/{ticket}/confirmacion', 'responderSolucion')->name('tickets.confirmacion');
         Route::post('/tickets/{ticket}/comentarios', 'comentar')->name('tickets.comentarios');
         Route::post('/tickets/{ticket}/recomendacion', 'aplicarRecomendacion')->name('tickets.recomendacion');
         Route::post('/tickets/{ticket}/clasificar', 'clasificar')->middleware('throttle:ia')->name('tickets.clasificar');
@@ -102,6 +103,7 @@ Route::middleware('auth')->group(function () {
     // Notificaciones (cada usuario las suyas)
     Route::middleware("can:modulo,'notificaciones'")->controller(NotificacionController::class)->group(function () {
         Route::get('/notificaciones', 'index')->name('notificaciones.index');
+        Route::get('/notificaciones/resumen', 'resumen')->name('notificaciones.resumen');
         Route::get('/notificaciones/{notificacion}/abrir', 'abrir')->name('notificaciones.abrir');
         Route::post('/notificaciones/marcar-todas', 'marcarTodas')->name('notificaciones.marcar-todas');
     });

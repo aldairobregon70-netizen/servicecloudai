@@ -77,6 +77,16 @@ class TicketService
 
         if ($ticket->tecnico_id) {
             $this->notificaciones->notificar($ticket->tecnico_id, 'Ticket asignado', "Se te asignó {$ticket->codigo}: {$ticket->titulo}", TipoNotificacion::Asignacion, $ticket);
+        } else {
+            // Gestión: un ticket nuevo sin técnico requiere acción
+            foreach ($this->notificaciones->gestoresDe($ticket->organizacion_id) as $gestor) {
+                if ($gestor->id !== $autor->id) {
+                    $this->notificaciones->notificar($gestor, 'Nuevo ticket sin asignar', "{$ticket->codigo}: {$ticket->titulo}", TipoNotificacion::Ticket, $ticket);
+                }
+            }
+        }
+        if ($ticket->solicitante_id !== $autor->id) {
+            $this->notificaciones->notificar($ticket->solicitante_id, 'Registramos tu ticket', "{$autor->nombre} registró {$ticket->codigo} a tu nombre: {$ticket->titulo}", TipoNotificacion::Ticket, $ticket);
         }
 
         // Clasificación IA automática (si la organización la tiene activa). Nunca impide crear el ticket.
@@ -178,6 +188,10 @@ class TicketService
         if ($tecnicoId && $tecnicoId !== $usuario->id) {
             $this->notificaciones->notificar($tecnicoId, 'Ticket asignado', "Se te asignó {$ticket->codigo}: {$ticket->titulo}", TipoNotificacion::Asignacion, $ticket);
         }
+        if ($tecnicoId && $ticket->solicitante_id !== $usuario->id) {
+            $nombre = Usuario::sinFiltroOrganizacion()->whereKey($tecnicoId)->value('nombre');
+            $this->notificaciones->notificar($ticket->solicitante_id, 'Tu ticket ya tiene técnico', "{$nombre} revisará {$ticket->codigo}.", TipoNotificacion::Ticket, $ticket);
+        }
     }
 
     private function registrarAsignacion(Ticket $ticket, ?int $anterior, ?int $nuevo, Usuario $usuario, string $motivo): void
@@ -192,7 +206,11 @@ class TicketService
 
     // ------------------------------------------------------------------ estado
 
-    public function cambiarEstado(Ticket $ticket, EstadoTicket $nuevo, Usuario $usuario, ?string $solucion = null): void
+    /**
+     * @param  string|null  $comentario  mensaje público para el solicitante (p. ej. qué información falta)
+     * @param  bool  $notificar  false cuando quien llama ya envía su propio aviso
+     */
+    public function cambiarEstado(Ticket $ticket, EstadoTicket $nuevo, Usuario $usuario, ?string $solucion = null, ?string $comentario = null, bool $notificar = true): void
     {
         $anterior = $ticket->estado;
         if ($anterior === $nuevo) {
@@ -208,7 +226,7 @@ class TicketService
             throw ValidationException::withMessages(['estado' => 'Asigna un técnico antes de pasar a "'.$nuevo->label().'".']);
         }
 
-        DB::transaction(function () use ($ticket, $anterior, $nuevo, $usuario, $solucion) {
+        DB::transaction(function () use ($ticket, $anterior, $nuevo, $usuario, $solucion, $comentario) {
             $ahora = now();
             $ticket->estado = $nuevo;
             if (! $ticket->primera_respuesta_en && in_array($nuevo, [EstadoTicket::EnProgreso, EstadoTicket::EnEspera, EstadoTicket::Resuelto], true)) {
@@ -229,11 +247,45 @@ class TicketService
             $this->sla->alCambiarEstado($ticket, $anterior, $nuevo);
             $ticket->save();
             $this->historial($ticket, $usuario, 'estado', $anterior->value, $nuevo->value);
+            if (filled($comentario)) {
+                TicketComentario::create(['ticket_id' => $ticket->id, 'autor_id' => $usuario->id, 'contenido' => $comentario, 'es_interno' => false]);
+            }
         });
 
-        if ($ticket->solicitante_id !== $usuario->id) {
-            $this->notificaciones->notificar($ticket->solicitante_id, 'Tu ticket cambió de estado', "{$ticket->codigo} pasó a {$nuevo->label()}.", TipoNotificacion::Ticket, $ticket);
+        if (! $notificar) {
+            return;
         }
+        $extra = filled($comentario) ? ' «'.Str::limit($comentario, 120).'»' : '';
+        if ($ticket->solicitante_id !== $usuario->id) {
+            [$titulo, $mensaje] = $this->avisoSolicitante($ticket, $nuevo, $anterior);
+            $this->notificaciones->notificar($ticket->solicitante_id, $titulo, $mensaje.$extra, TipoNotificacion::Ticket, $ticket);
+        }
+        if ($ticket->tecnico_id && $ticket->tecnico_id !== $usuario->id && $ticket->tecnico_id !== $ticket->solicitante_id) {
+            $titulo = match (true) {
+                $usuario->id === $ticket->solicitante_id && $nuevo === EstadoTicket::Cerrado => 'Solución confirmada',
+                $usuario->id === $ticket->solicitante_id && $anterior === EstadoTicket::Resuelto => 'El usuario reabrió el ticket',
+                default => 'Ticket actualizado',
+            };
+            $this->notificaciones->notificar($ticket->tecnico_id, $titulo, "{$usuario->nombre} pasó {$ticket->codigo} a {$nuevo->label()}.".$extra, TipoNotificacion::Ticket, $ticket);
+        }
+    }
+
+    /** Aviso en lenguaje de usuario: qué significa el nuevo estado para quien reportó. */
+    private function avisoSolicitante(Ticket $ticket, EstadoTicket $nuevo, EstadoTicket $anterior): array
+    {
+        $tecnico = $ticket->tecnico()->withoutGlobalScopes()->value('nombre') ?? 'El técnico';
+
+        return match ($nuevo) {
+            EstadoTicket::EnProgreso => $anterior === EstadoTicket::Resuelto
+                ? ['Tu ticket fue reabierto', "{$ticket->codigo} volvió a atención."]
+                : ['Están atendiendo tu ticket', "{$tecnico} está trabajando en {$ticket->codigo}."],
+            EstadoTicket::EnEspera => ['Necesitamos tu respuesta', "{$tecnico} necesita información para continuar con {$ticket->codigo}."],
+            EstadoTicket::Resuelto => ['Tu ticket fue resuelto', "Revisa la solución de {$ticket->codigo} y confírmala."],
+            EstadoTicket::Cerrado => ['Tu ticket fue cerrado', "{$ticket->codigo} quedó cerrado."],
+            EstadoTicket::Cancelado => ['Tu ticket fue cancelado', "{$ticket->codigo} fue cancelado."],
+            EstadoTicket::Asignado => ['Tu ticket ya tiene técnico', "{$tecnico} revisará {$ticket->codigo}."],
+            EstadoTicket::Abierto => ['Tu ticket cambió de estado', "{$ticket->codigo} volvió a la cola de asignación."],
+        };
     }
 
     // ------------------------------------------------------------------ comentarios y adjuntos
@@ -249,9 +301,23 @@ class TicketService
             $ticket->sla()->whereNull('respuesta_cumplida')->update(['respuesta_cumplida' => $ticket->primera_respuesta_en <= $ticket->vencimiento_respuesta]);
         }
 
+        // El usuario respondió lo que se le pidió: el ticket sale de "En espera" y el SLA se reanuda
+        $reanudado = false;
+        if (! $interno && $autor->id === $ticket->solicitante_id && $ticket->estado === EstadoTicket::EnEspera && $ticket->tecnico_id) {
+            $this->cambiarEstado($ticket, EstadoTicket::EnProgreso, $autor, notificar: false);
+            $reanudado = true;
+        }
+
         if (! $interno) {
-            $destinatario = $autor->id === $ticket->solicitante_id ? $ticket->tecnico_id : $ticket->solicitante_id;
-            $this->notificaciones->notificar($destinatario, 'Nuevo comentario', "{$autor->nombre} comentó en {$ticket->codigo}.", TipoNotificacion::Ticket, $ticket);
+            $esSolicitante = $autor->id === $ticket->solicitante_id;
+            $destinatario = $esSolicitante ? $ticket->tecnico_id : $ticket->solicitante_id;
+            $titulo = match (true) {
+                $reanudado => 'El usuario respondió',
+                $esSolicitante => 'Nuevo mensaje del usuario',
+                default => 'Nuevo mensaje en tu ticket',
+            };
+            $mensaje = "{$autor->nombre} en {$ticket->codigo}: «".Str::limit($contenido, 120).'»'.($reanudado ? ' El ticket volvió a En progreso.' : '');
+            $this->notificaciones->notificar($destinatario, $titulo, $mensaje, TipoNotificacion::Ticket, $ticket);
         }
 
         return $comentario;

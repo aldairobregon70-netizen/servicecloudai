@@ -13,9 +13,11 @@
 
   <div class="card card-pad">
     @forelse ($notificaciones as $notificacion)
-      <a class="notif-item {{ $notificacion->leida_en ? '' : 'unread' }}" style="border-bottom:1px solid var(--line)" href="{{ route('notificaciones.abrir', $notificacion) }}" data-notif="{{ $notificacion->id }}">
-        <div class="notif-dot" style="{{ $notificacion->leida_en ? 'opacity:.2' : '' }}"></div>
-        <div class="result-text" style="flex:1"><b>{{ $notificacion->titulo }}</b><span>{{ $notificacion->mensaje }} · {{ App\Support\Formato::relativo($notificacion->creado_en) }}</span></div>
+      @php([$iconoNotif, $tonoNotif] = $notificacion->apariencia())
+      <a class="notif-item notif-fila {{ $notificacion->leida_en ? '' : 'unread' }}" href="{{ route('notificaciones.abrir', $notificacion) }}" data-notif="{{ $notificacion->id }}">
+        <div class="notif-icono tono-{{ $tonoNotif }}"><i data-lucide="{{ $iconoNotif }}"></i></div>
+        <div class="result-text" style="flex:1"><b>{{ $notificacion->titulo }}</b><span>{{ $notificacion->mensaje }}</span><small>{{ App\Support\Formato::relativo($notificacion->creado_en) }}@if ($notificacion->ticket) · {{ $notificacion->ticket->codigo }}@endif</small></div>
+        @unless ($notificacion->leida_en)<span class="notif-nuevo" title="Sin leer"></span>@endunless
         <x-badge :valor="$notificacion->tipo" />
       </a>
     @empty

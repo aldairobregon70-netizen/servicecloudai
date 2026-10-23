@@ -34,6 +34,7 @@
         @foreach ($menu as $clave => $item)
           <a href="{{ route($item['ruta']) }}" class="nav-item {{ $moduloActivo === $clave ? 'active' : '' }}" title="{{ $item['etiqueta'] }}">
             <i data-lucide="{{ $item['icono'] }}"></i><span>{{ $item['etiqueta'] }}</span>
+            @if ($clave === 'notificaciones')<em class="nav-count" data-notif-count @if ($notificacionesNoLeidas === 0) hidden @endif>{{ $notificacionesNoLeidas }}</em>@endif
           </a>
         @endforeach
       </nav>
@@ -68,7 +69,7 @@
         </div>
         <a class="ai-button" id="openAI" href="{{ route('asistente.index') }}"><i data-lucide="sparkles"></i><span>Asistente IA</span></a>
         <div style="position:relative">
-          <button class="icon-btn" id="notifBtn" title="Notificaciones"><i data-lucide="bell"></i>@if ($notificacionesNoLeidas > 0)<span class="badge-dot"></span>@endif</button>
+          <button class="icon-btn" id="notifBtn" title="Notificaciones" aria-label="Notificaciones" data-url="{{ route('notificaciones.resumen') }}" data-ultima="{{ $notificacionesHeader->max('id') ?? 0 }}"><i data-lucide="bell"></i>@if ($notificacionesNoLeidas > 0)<span class="badge-dot badge-count" data-notif-count>{{ $notificacionesNoLeidas > 99 ? '99+' : $notificacionesNoLeidas }}</span>@else<span class="badge-dot badge-count" data-notif-count hidden></span>@endif</button>
           <div id="notifDropdown" class="dropdown-panel notif-dropdown hidden">
             @include('partials.notificaciones-dropdown')
           </div>

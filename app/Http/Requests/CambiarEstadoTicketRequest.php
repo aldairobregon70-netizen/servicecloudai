@@ -18,16 +18,21 @@ class CambiarEstadoTicketRequest extends FormRequest
         return [
             'estado' => ['required', Rule::in(EstadoTicket::valores())],
             'solucion' => ['nullable', 'required_if:estado,resuelto', 'string', 'max:5000'],
+            // Mensaje opcional para el solicitante (obligatorio al pedirle información)
+            'comentario' => ['nullable', 'required_if:pedir_info,1', 'string', 'max:5000'],
         ];
     }
 
     public function attributes(): array
     {
-        return ['solucion' => 'solución'];
+        return ['solucion' => 'solución', 'comentario' => 'mensaje'];
     }
 
     public function messages(): array
     {
-        return ['solucion.required_if' => 'Describe la solución para marcar el ticket como resuelto.'];
+        return [
+            'solucion.required_if' => 'Describe la solución para marcar el ticket como resuelto.',
+            'comentario.required_if' => 'Indica qué información necesitas del usuario.',
+        ];
     }
 }

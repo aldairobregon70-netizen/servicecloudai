@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\EstadoTicket;
 use App\Enums\Rol;
 use App\Models\Ticket;
 use App\Models\Usuario;
@@ -59,6 +60,12 @@ class TicketPolicy
     {
         return $this->esGestion($usuario)
             || ($usuario->tieneRol(Rol::Tecnico) && ($ticket->tecnico_id === $usuario->id || $ticket->tecnico_id === null));
+    }
+
+    /** Quien reportó el ticket confirma la solución (cierra) o indica que sigue fallando (reabre). */
+    public function responderSolucion(Usuario $usuario, Ticket $ticket): bool
+    {
+        return $ticket->solicitante_id === $usuario->id && $ticket->estado === EstadoTicket::Resuelto;
     }
 
     public function comentar(Usuario $usuario, Ticket $ticket): bool

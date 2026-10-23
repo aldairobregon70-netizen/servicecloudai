@@ -59,7 +59,7 @@ class AppServiceProvider extends ServiceProvider
             $menu = collect(config('servicecloud.menu'))
                 ->filter(fn ($item, $clave) => $usuario->puedeVerModulo($clave));
 
-            $notificaciones = Notificacion::de($usuario)->latest('creado_en')->limit(5)->get();
+            $notificaciones = Notificacion::de($usuario)->latest('creado_en')->latest('id')->limit(6)->get();
 
             $view->with([
                 'usuarioActual' => $usuario,

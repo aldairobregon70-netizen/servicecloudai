@@ -54,4 +54,26 @@ class Notificacion extends Model
     {
         return $consulta->where('usuario_id', $usuario->id);
     }
+
+    /** Ícono y tono para la campana: [ícono lucide, tono]. tono: info|aviso|exito|peligro|neutro */
+    public function apariencia(): array
+    {
+        $titulo = mb_strtolower($this->titulo);
+
+        return match (true) {
+            str_contains($titulo, 'respuesta') || str_contains($titulo, 'reabri') => ['message-circle-question', 'aviso'],
+            str_contains($titulo, 'resuelto') || str_contains($titulo, 'confirmada') || str_contains($titulo, 'cerrado') => ['circle-check-big', 'exito'],
+            str_contains($titulo, 'mensaje') || str_contains($titulo, 'respondió') || str_contains($titulo, 'comentario') => ['message-square', 'info'],
+            str_contains($titulo, 'atendiendo') => ['wrench', 'info'],
+            str_contains($titulo, 'técnico') || str_contains($titulo, 'asignado') => ['user-check', 'info'],
+            str_contains($titulo, 'vencid') || str_contains($titulo, 'cancelado') => ['triangle-alert', 'peligro'],
+            default => match ($this->tipo) {
+                TipoNotificacion::Asignacion => ['user-check', 'info'],
+                TipoNotificacion::Sla => ['timer', 'aviso'],
+                TipoNotificacion::Ia => ['sparkles', 'neutro'],
+                TipoNotificacion::Sistema => ['settings', 'neutro'],
+                default => ['ticket', 'info'],
+            },
+        };
+    }
 }

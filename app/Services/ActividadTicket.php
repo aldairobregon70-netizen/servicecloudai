@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 class ActividadTicket
 {
     /** @return Collection<int, array{icono: string, titulo: string, texto: string, fecha: \DateTimeInterface}> */
-    public function para(Ticket $ticket, Usuario $usuario): Collection
+    public function para(Ticket $ticket, Usuario $usuario, bool $conComentarios = true): Collection
     {
         $ticket->loadMissing(['historial.usuario:id,nombre', 'comentarios.autor:id,nombre', 'adjuntos.subidoPor:id,nombre', 'clasificaciones']);
         $verInternos = $usuario->can('verInternos', $ticket);
@@ -30,7 +30,7 @@ class ActividadTicket
             ]);
         }
 
-        foreach ($ticket->comentarios as $c) {
+        foreach ($conComentarios ? $ticket->comentarios : [] as $c) {
             if ($c->es_interno && ! $verInternos) {
                 continue; // nunca se muestran notas internas al solicitante
             }

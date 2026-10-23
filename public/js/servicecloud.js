@@ -32,9 +32,9 @@
     el.className = `toast ${clase}`;
     el.innerHTML = `<div class="toast-icon">${icon(ic)}</div><div><b>${escapeHTML(title)}</b>${text ? `<p>${escapeHTML(text)}</p>` : ''}</div>`;
     $('#toastStack').appendChild(el); iconos();
-    setTimeout(() => el.remove(), 3400);
+    setTimeout(() => el.remove(), 5000);
   }
-  $$('[data-auto-cerrar]').forEach(el => setTimeout(() => el.remove(), 3400));
+  $$('[data-auto-cerrar]').forEach(el => setTimeout(() => el.remove(), 5000));
 
   // ---------------------------------------------------------------- modal
   function openModal(title, body, footer = '') {
@@ -254,6 +254,49 @@
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeModal(); $('#notifDropdown')?.classList.add('hidden'); $('#profileDropdown')?.classList.add('hidden'); $('#searchResults')?.classList.add('hidden'); closeDrawer(); }
   });
+
+  // ---------------------------------------------------- notificaciones en vivo
+  // La campana consulta /notificaciones/resumen cada 20 s (y al volver a la pestaña):
+  // actualiza el contador, el desplegable y muestra un aviso por cada notificación nueva.
+  const campana = $('#notifBtn');
+  const tituloBase = document.title.replace(/^\(\d+\+?\)\s*/, '');
+  function pintarContador(n) {
+    $$('[data-notif-count]').forEach(el => { el.textContent = n > 99 ? '99+' : n; el.hidden = n === 0; });
+    document.title = n > 0 ? `(${n}) ${tituloBase}` : tituloBase;
+  }
+  function avisoNotificacion(n) {
+    const el = document.createElement('a');
+    el.className = 'toast toast-notif';
+    el.href = n.url;
+    el.innerHTML = `<div class="toast-icon">${icon(n.icono || 'bell')}</div><div><b>${escapeHTML(n.titulo)}</b><p>${escapeHTML(n.mensaje)}</p><span class="toast-link">Ver detalle →</span></div>`;
+    $('#toastStack').appendChild(el); iconos();
+    setTimeout(() => el.remove(), 9000);
+  }
+  async function revisarNotificaciones() {
+    if (!campana || document.hidden) return;
+    try {
+      const r = await scFetch(`${campana.dataset.url}?desde=${campana.dataset.ultima || 0}`);
+      if (!r.ok || !r.data || typeof r.data !== 'object') return;
+      pintarContador(r.data.no_leidas);
+      const panel = $('#notifDropdown');
+      if (panel.classList.contains('hidden')) { panel.innerHTML = r.data.html; iconos(); }
+      r.data.nuevas.forEach(avisoNotificacion);
+      if (r.data.nuevas.length) { campana.classList.add('sonando'); setTimeout(() => campana.classList.remove('sonando'), 1400); }
+      campana.dataset.ultima = Math.max(Number(campana.dataset.ultima || 0), r.data.ultima || 0);
+      // Si la novedad es del ticket que se está viendo, se recarga (salvo que el usuario esté escribiendo)
+      const actual = $('[data-ticket-actual]')?.dataset.ticketActual;
+      const escribiendo = $$('textarea').some(t => t.value.trim()) || $('#modalBackdrop')?.classList.contains('open');
+      if (actual && !escribiendo && r.data.nuevas.some(nv => nv.ticket === actual)) {
+        scToast('Este ticket tiene novedades', 'Actualizando la página…', 'aviso');
+        setTimeout(() => window.location.reload(), 2500);
+      }
+    } catch (e) { /* sin conexión: se reintenta en el siguiente ciclo */ }
+  }
+  if (campana?.dataset.url) {
+    pintarContador(parseInt($('[data-notif-count]', campana)?.textContent, 10) || 0);
+    setInterval(revisarNotificaciones, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) revisarNotificaciones(); });
+  }
 
   // API para las vistas de cada módulo
   window.SC = { $, $$, escapeHTML, icon, iconos, scFetch, scToast, openModal, closeModal, openModalDesdeHTML, abrirModalRemoto, scInitChart, iniciarGraficos };

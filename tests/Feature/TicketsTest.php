@@ -154,7 +154,7 @@ class TicketsTest extends TestCase
         $this->assertSame('resuelto', $ticket->estado->value);
         $this->assertNotNull($ticket->resuelto_en);
         $this->assertNotNull($ticket->sla->resolucion_cumplida);
-        $this->assertTrue(Notificacion::sinFiltroOrganizacion()->where('usuario_id', $ticket->solicitante_id)->where('titulo', 'Tu ticket cambió de estado')->exists());
+        $this->assertTrue(Notificacion::sinFiltroOrganizacion()->where('usuario_id', $ticket->solicitante_id)->where('titulo', 'Tu ticket fue resuelto')->exists());
     }
 
     public function test_cambiar_prioridad_recalcula_el_vencimiento(): void
